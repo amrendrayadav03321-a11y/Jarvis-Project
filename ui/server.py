@@ -1,10 +1,12 @@
 import os
 import sys
 import time
+import socket
 import psutil
 import asyncio
 import threading
 import subprocess
+import webbrowser
 from pathlib import Path
 from aiohttp import web
 
@@ -16,9 +18,25 @@ from core.wakeword import wake_detector
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
 
+def get_local_ip() -> str:
+    """Returns local network IP address for cross-device access."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.5)
+        s.connect(('8.8.8.8', 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except Exception:
+            return "127.0.0.1"
+
 class JarvisServer:
     def __init__(self, port: int = 8888):
         self.port = port
+        self.local_ip = get_local_ip()
         self.app = web.Application()
         self.messages = [
             {
@@ -67,12 +85,15 @@ class JarvisServer:
             "battery_charging": is_charging,
             "disk_free_gb": round(disk.free / (1024**3), 1),
             "voice_state": self.voice_state,
-            "wake_word_shield": Config.WAKE_WORD_REQUIRED
+            "wake_word_shield": Config.WAKE_WORD_REQUIRED,
+            "local_ip": self.local_ip,
+            "port": self.port,
+            "network_url": f"http://{self.local_ip}:{self.port}"
         })
 
     async def handle_history(self, request):
         return web.json_response({
-            "messages": self.messages[-30:]
+            "messages": self.messages[-35:]
         })
 
     async def handle_command(self, request):
@@ -85,7 +106,7 @@ class JarvisServer:
         self.add_message("user", query)
         self.voice_state = "processing"
 
-        # Execute command in thread to avoid blocking event loop
+        # Execute command in worker thread
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(None, brain.process, query)
 
@@ -137,7 +158,6 @@ class JarvisServer:
     def start_voice_loop(self):
         """Background listener thread with Wake Word & Background Audio Filter."""
         def worker():
-            # Calibrate sensors once
             listener.calibrate()
             
             while self.running:
@@ -154,7 +174,7 @@ class JarvisServer:
 
                     has_wake, extracted_command = wake_detector.extract_command(raw_audio)
                     if not has_wake:
-                        # FILTER BACKGROUND AUDIO / MUSIC!
+                        # Silently ignore stray background songs or chatter
                         time.sleep(0.1)
                         continue
 
@@ -200,43 +220,55 @@ class JarvisServer:
         self.voice_thread.start()
 
     def launch_window(self):
-        """Opens dedicated application window using Brave Browser, Chrome, or Safari."""
+        """Opens UI in the user's default browser or preferred browser without breaking on missing apps."""
         url = f"http://127.0.0.1:{self.port}"
         
-        # 1. Try Brave Browser in app mode (frameless desktop window)
-        brave_path = Path("/Applications/Brave Browser.app")
-        if brave_path.exists():
-            try:
-                subprocess.Popen(["open", "-na", "Brave Browser", "--args", f"--app={url}", "--window-size=1280,840"])
-                return
-            except Exception:
-                pass
-
-        # 2. Try Google Chrome in app mode
-        chrome_path = Path("/Applications/Google Chrome.app")
-        if chrome_path.exists():
-            try:
-                subprocess.Popen(["open", "-na", "Google Chrome", "--args", f"--app={url}", "--window-size=1280,840"])
-                return
-            except Exception:
-                pass
-
-        # 3. Fallback: default macOS open
+        # 1. Standard python webbrowser module (opens user's active default browser on any OS)
         try:
-            subprocess.Popen(["open", url])
+            opened = webbrowser.open(url)
+            if opened:
+                return
         except Exception:
             pass
 
+        # 2. Platform-specific fallback
+        if sys.platform == "darwin":  # macOS
+            try:
+                subprocess.Popen(["open", url])
+            except Exception:
+                pass
+        elif sys.platform == "win32":  # Windows
+            try:
+                os.startfile(url)
+            except Exception:
+                pass
+        else:  # Linux
+            try:
+                subprocess.Popen(["xdg-open", url])
+            except Exception:
+                pass
+
     def run(self):
-        """Starts web server and background voice worker."""
+        """Starts web server accessible locally and across all devices on the same network."""
+        self.local_ip = get_local_ip()
+
         # 1. Launch background voice loop
         self.start_voice_loop()
 
         # 2. Delayed browser window open
         threading.Timer(0.8, self.launch_window).start()
 
-        # 3. Run aiohttp server
-        web.run_app(self.app, host="127.0.0.1", port=self.port, print=None)
+        # 3. Print clean network connection guide
+        print(f"\n==================================================")
+        print(f"⚡ J.A.R.V.I.S. TACTICAL OS ONLINE")
+        print(f"🖥️  Local Device:   http://localhost:{self.port}")
+        if self.local_ip and self.local_ip != "127.0.0.1":
+            print(f"📱 Remote Devices: http://{self.local_ip}:{self.port} (Access from Mobile/Tablet on same Wi-Fi)")
+        print(f"⚡ Press Ctrl+C to terminate")
+        print(f"==================================================\n")
+
+        # 4. Run aiohttp server bound to 0.0.0.0 for cross-device support
+        web.run_app(self.app, host="0.0.0.0", port=self.port, print=None)
 
 server = JarvisServer(port=8888)
 

@@ -813,3 +813,86 @@ body {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* ==========================================================================
+   NETWORK PILL & RESPONSIVE LAYOUT FOR ALL DEVICES & BROWSERS
+   ========================================================================== */
+
+.status-net {
+    background: rgba(255, 170, 0, 0.12);
+    border: 1px solid rgba(255, 170, 0, 0.5);
+    color: var(--stark-gold);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 0 10px rgba(255, 170, 0, 0.2);
+}
+
+@media (max-width: 1100px) {
+    .tactical-main {
+        grid-template-columns: 240px 1fr 280px;
+    }
+}
+
+@media (max-width: 900px) {
+    body {
+        overflow-y: auto;
+        height: auto;
+        min-height: 100vh;
+    }
+    .app-container {
+        height: auto;
+        min-height: 100vh;
+        overflow-y: visible;
+        padding: 12px;
+    }
+    .tactical-main {
+        display: flex;
+        flex-direction: column;
+    }
+    .panel {
+        width: 100%;
+    }
+    .panel-center {
+        order: -1;
+        padding: 20px;
+    }
+    .reactor-container {
+        width: 300px;
+        height: 300px;
+    }
+    #reactor-canvas {
+        width: 340px;
+        height: 340px;
+    }
+    .hud-circle-outer { width: 300px; height: 300px; }
+    .hud-circle-ticks { width: 280px; height: 280px; }
+    .hud-reticle { width: 320px; height: 320px; }
+}
+
+@media (max-width: 600px) {
+    .tactical-header {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+    .header-left, .header-right {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .time-widget {
+        text-align: center;
+    }
+    .jarvis-title {
+        font-size: 22px;
+        letter-spacing: 4px;
+    }
+    .command-bar {
+        gap: 8px;
+    }
+    .send-button span:first-child {
+        display: none;
+    }
+}

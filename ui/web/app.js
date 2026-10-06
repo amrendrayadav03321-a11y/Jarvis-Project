@@ -298,23 +298,72 @@ function sendQuickCommand(cmd) {
     sendQueryToServer(cmd);
 }
 
+// Web Speech API for mobile/remote browser mic input
+let recognition = null;
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if (SpeechRecognition) {
+    try {
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-IN';
+
+        recognition.onstart = () => {
+            const micBtn = document.getElementById('mic-toggle-btn');
+            if (micBtn) micBtn.classList.add('listening');
+            setUiState('listening', 'RECORDING SPEECH FROM DEVICE...');
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            if (transcript) {
+                sendQueryToServer(transcript);
+            }
+        };
+
+        recognition.onerror = () => {
+            fallbackServerListen();
+        };
+
+        recognition.onend = () => {
+            const micBtn = document.getElementById('mic-toggle-btn');
+            if (micBtn) micBtn.classList.remove('listening');
+        };
+    } catch (e) {
+        recognition = null;
+    }
+}
+
 function triggerManualMic() {
+    // If Web Speech API is supported on this device (e.g. phone or browser):
+    if (recognition) {
+        try {
+            recognition.start();
+            return;
+        } catch (e) {
+            // Already active or error, fall through
+        }
+    }
+    fallbackServerListen();
+}
+
+function fallbackServerListen() {
     const micBtn = document.getElementById('mic-toggle-btn');
-    micBtn.classList.add('listening');
+    if (micBtn) micBtn.classList.add('listening');
     setUiState('listening', 'LISTENING // SPEAK YOUR COMMAND NOW');
 
     fetch('/api/listen', { method: 'POST' })
         .then(res => res.json())
         .then(data => {
-            micBtn.classList.remove('listening');
+            if (micBtn) micBtn.classList.remove('listening');
             if (data.command) {
-                // Refresh log immediately
                 fetchHistory();
             }
         })
         .catch(() => {
-            micBtn.classList.remove('listening');
-            setUiState('standby', 'STANDBY // SAY "HEY JARVIS"');
+            if (micBtn) micBtn.classList.remove('listening');
+            setUiState('standby', 'STANDBY // SAY "HEY JARVIS" TO ACTIVATE');
         });
 }
 
@@ -387,6 +436,12 @@ function fetchTelemetry() {
 
             // Update Storage
             document.getElementById('disk-value').textContent = data.disk_free_gb + ' GB Free';
+
+            // Update Remote Network Access URL
+            const netPill = document.getElementById('network-pill');
+            if (netPill && data.network_url) {
+                netPill.textContent = `📱 WIFI: ${data.network_url}`;
+            }
 
             // Voice state sync if provided
             if (data.voice_state && data.voice_state !== state.mode) {
