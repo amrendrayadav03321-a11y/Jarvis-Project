@@ -1,0 +1,36 @@
+# Environment & API Keys (DO NOT COMMIT SECRETS)
+.env
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# User data & captures
+notes/*.txt
+!notes/.gitkeep
+screenshots/*.png
+!screenshots/.gitkeep
+
+# Logs and runtime artifacts
+*.log
+*.tmp
+temp/
+
+# IDE files
+.vscode/
+.idea/

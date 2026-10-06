@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S. // Stark Industries Tactical OS</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+</head>
+<body class="theme-stark">
+    <!-- Holographic Background Elements -->
+    <div class="hologram-grid"></div>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+
+    <div class="app-container">
+        <!-- TOP TACTICAL HEADER -->
+        <header class="tactical-header">
+            <div class="header-left">
+                <div class="stark-logo">
+                    <span class="stark-icon">◈</span>
+                    <span class="stark-text">STARK INDUSTRIES</span>
+                </div>
+                <div class="sys-badge">
+                    <span class="blinking-dot"></span>
+                    <span class="badge-label">MARK LXXXV // APPLE SILICON ARM64</span>
+                </div>
+            </div>
+
+            <div class="header-center">
+                <div class="title-hologram">
+                    <span class="jarvis-title">J.A.R.V.I.S.</span>
+                    <span class="jarvis-sub">TACTICAL AI DESKTOP OS</span>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="time-widget">
+                    <span id="current-time" class="digital-clock">00:00:00</span>
+                    <span id="current-date" class="digital-date">OCTOBER 06, 2026</span>
+                </div>
+                <div class="connection-status">
+                    <span id="ai-indicator" class="status-pill status-online">AI CORE ONLINE</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN HOLOGRAPHIC WORKSPACE -->
+        <main class="tactical-main">
+            <!-- LEFT PANEL: TELEMETRY & HARDWARE GAUGES -->
+            <aside class="panel panel-left">
+                <div class="panel-header">
+                    <span class="panel-title">// HARDWARE TELEMETRY</span>
+                    <span class="panel-tag">SYS-01</span>
+                </div>
+
+                <div class="telemetry-cards">
+                    <!-- CPU CARD -->
+                    <div class="telemetry-card">
+                        <div class="card-head">
+                            <span class="card-icon">⚡</span>
+                            <span class="card-name">CPU LOAD</span>
+                            <span id="cpu-value" class="card-val">0%</span>
+                        </div>
+                        <div class="gauge-bar-bg">
+                            <div id="cpu-bar" class="gauge-bar-fill" style="width: 15%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- RAM CARD -->
+                    <div class="telemetry-card">
+                        <div class="card-head">
+                            <span class="card-icon">🧠</span>
+                            <span class="card-name">MEMORY (RAM)</span>
+                            <span id="ram-value" class="card-val">0%</span>
+                        </div>
+                        <div class="gauge-bar-bg">
+                            <div id="ram-bar" class="gauge-bar-fill gauge-cyan" style="width: 60%;"></div>
+                        </div>
+                        <div id="ram-detail" class="card-subtext">0.0 GB / 0.0 GB</div>
+                    </div>
+
+                    <!-- BATTERY CARD -->
+                    <div class="telemetry-card">
+                        <div class="card-head">
+                            <span class="card-icon">🔋</span>
+                            <span class="card-name">ARC BATTERY</span>
+                            <span id="battery-value" class="card-val">0%</span>
+                        </div>
+                        <div class="gauge-bar-bg">
+                            <div id="battery-bar" class="gauge-bar-fill gauge-gold" style="width: 85%;"></div>
+                        </div>
+                        <div id="battery-status" class="card-subtext">Discharging</div>
+                    </div>
+
+                    <!-- DISK STORAGE -->
+                    <div class="telemetry-card">
+                        <div class="card-head">
+                            <span class="card-icon">💾</span>
+                            <span class="card-name">SSD STORAGE</span>
+                            <span id="disk-value" class="card-val">0 GB Free</span>
+                        </div>
+                        <div class="gauge-bar-bg">
+                            <div id="disk-bar" class="gauge-bar-fill gauge-blue" style="width: 45%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-header margin-top">
+                    <span class="panel-title">// ACTIVE PROTOCOLS</span>
+                    <span class="panel-tag">SEC-02</span>
+                </div>
+
+                <div class="protocol-list">
+                    <div class="protocol-item active">
+                        <span class="proto-dot">●</span>
+                        <div class="proto-info">
+                            <span class="proto-title">NOISE SHIELD</span>
+                            <span class="proto-desc">Filters background music until 'Hey Jarvis'</span>
+                        </div>
+                    </div>
+                    <div class="protocol-item active">
+                        <span class="proto-dot">●</span>
+                        <div class="proto-info">
+                            <span class="proto-title">DEEP MALE VOICE</span>
+                            <span class="proto-desc">Neural Baritone Synthesis (Edge / Rishi)</span>
+                        </div>
+                    </div>
+                    <div class="protocol-item active">
+                        <span class="proto-dot">●</span>
+                        <div class="proto-info">
+                            <span class="proto-title">GEMINI 3.5 AI</span>
+                            <span class="proto-desc">Direct Tool Execution & High-Speed NLP</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- CENTER PANEL: ARC REACTOR & VISUALIZER -->
+            <section class="panel panel-center">
+                <div class="reactor-container">
+                    <div class="hud-circle-outer"></div>
+                    <div class="hud-circle-ticks"></div>
+                    <div class="hud-reticle"></div>
+
+                    <!-- ARC REACTOR CANVAS -->
+                    <canvas id="reactor-canvas" width="420" height="420"></canvas>
+
+                    <!-- CORE BADGE OVERLAY -->
+                    <div class="reactor-core-label">
+                        <span class="core-tech">MARK 85</span>
+                        <span class="core-status" id="reactor-status-text">STANDBY</span>
+                    </div>
+                </div>
+
+                <!-- STATE BANNER -->
+                <div class="status-banner" id="status-banner">
+                    <span class="banner-pulse"></span>
+                    <span id="status-text" class="banner-text">STANDBY // SAY "HEY JARVIS" TO ACTIVATE</span>
+                </div>
+
+                <!-- DYNAMIC AUDIO WAVEFORM CANVAS -->
+                <div class="waveform-container">
+                    <canvas id="waveform-canvas" width="600" height="60"></canvas>
+                </div>
+            </section>
+
+            <!-- RIGHT PANEL: CONVERSATION HUD & ACTIVITY LOGS -->
+            <aside class="panel panel-right">
+                <div class="panel-header">
+                    <span class="panel-title">// TACTICAL LOG & DIALOGUE</span>
+                    <span class="panel-tag">COMMS-03</span>
+                </div>
+
+                <div class="chat-feed" id="chat-feed">
+                    <div class="chat-message msg-jarvis">
+                        <div class="msg-header">
+                            <span class="msg-author">◈ J.A.R.V.I.S.</span>
+                            <span class="msg-time">SYSTEM BOOT</span>
+                        </div>
+                        <div class="msg-body">
+                            Jarvis tactical protocols fully initialized. All defense and automation systems are online. Ready for your command, Sir.
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- BOTTOM INTERACTIVE DECK -->
+        <footer class="tactical-footer">
+            <!-- QUICK ACTION BUTTONS -->
+            <div class="quick-actions">
+                <button class="action-btn" onclick="sendQuickCommand('play some trending songs on YouTube')">
+                    <span class="btn-icon">🎵</span> Play Music
+                </button>
+                <button class="action-btn" onclick="sendQuickCommand('take screenshot')">
+                    <span class="btn-icon">📸</span> Screenshot
+                </button>
+                <button class="action-btn" onclick="sendQuickCommand('what is the weather today')">
+                    <span class="btn-icon">⛅</span> Weather
+                </button>
+                <button class="action-btn" onclick="sendQuickCommand('system status')">
+                    <span class="btn-icon">📊</span> Diagnostics
+                </button>
+                <button class="action-btn" onclick="sendQuickCommand('volume up')">
+                    <span class="btn-icon">🔊</span> Volume +
+                </button>
+                <button class="action-btn" onclick="sendQuickCommand('tell me a joke')">
+                    <span class="btn-icon">🎭</span> Joke
+                </button>
+                <button class="action-btn action-danger" onclick="sendQuickCommand('lock screen')">
+                    <span class="btn-icon">🔒</span> Lock Mac
+                </button>
+            </div>
+
+            <!-- INTERACTIVE INPUT FORM -->
+            <div class="command-bar">
+                <button id="mic-toggle-btn" class="mic-button" title="Click to manually activate voice capture">
+                    <span class="mic-icon">🎙️</span>
+                    <span class="mic-glow"></span>
+                </button>
+
+                <div class="input-wrapper">
+                    <span class="input-prefix">&gt;</span>
+                    <input type="text" id="command-input" placeholder="Enter voice command or prompt (e.g. 'play Bohemian Rhapsody', 'check battery')..." autocomplete="off">
+                    <button id="send-btn" class="send-button" title="Send Command">
+                        <span>TRANSMIT</span>
+                        <span class="send-arrow">➔</span>
+                    </button>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
