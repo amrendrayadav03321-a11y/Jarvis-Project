@@ -38,6 +38,9 @@ class AssistantBrain:
                 tools.search_google,
                 tools.play_youtube,
                 tools.control_media,
+                tools.make_phone_call,
+                tools.send_text_message,
+                tools.add_contact,
                 tools.search_wikipedia,
                 tools.take_screenshot,
                 tools.set_volume,
@@ -66,8 +69,10 @@ class AssistantBrain:
                 "     you MUST respond in fluent, respectful, natural Hindi or Hinglish (e.g. 'जी सर, अभी प्ले कर रहा हूँ।', 'सर, आज मौसम साफ है।', 'जी सर, खोल दिया है।').\n"
                 "   - If the user speaks in English, respond in sleek British Jarvis English.\n\n"
                 "2. IMMEDIATE ACTION-FIRST EXECUTION:\n"
-                "   - When the user asks to do ANY task (play a song, open an application, adjust volume, take a screenshot, lock screen, check battery, check weather), "
-                "     DO NOT give lengthy disclaimers or talk about it—IMMEDIATELY CALL THE TOOL.\n"
+                "   - When the user asks to do ANY task (make a call, send a text, play a song, open an application, adjust volume, take a screenshot, lock screen, check battery, check weather), "
+                "     DO NOT give lengthy disclaimers or talk about it—IMMEDIATELY CALL THE APPROPRIATE TOOL.\n"
+                "   - For phone calls ('call Rohit', 'Papa ko call karo', 'call 9876543210'), call 'make_phone_call'.\n"
+                "   - For text messages ('text Rohit I am late', 'Papa ko message bhejo ki nikal gaya hoon', 'WhatsApp Aman Hello'), call 'send_text_message'.\n"
                 "   - For music requests, pass the exact song or artist to 'play_youtube' so it plays immediately.\n"
                 "   - Keep spoken answers brief (1 or 2 crisp sentences) so they are fast and conversational over voice."
             )
@@ -163,9 +168,57 @@ class AssistantBrain:
                 return f"Hello {Config.USER_NAME}! All systems are online. How can I help you?"
 
         # Normalize query by stripping leading 'jarvis' variants
-        q = re.sub(r'^(hey|hi|hello|ok|okay|oye|suno|arre)?\s*(jarvis|jarvish|jarves|javis|zarvis|jarvice|जार्विस)[,.]?\s*', '', q).strip()
+        q = re.sub(r'^(hey|hi|hello|ok|okay|oye|suno|arre)?\s*(jarvis|jarvish|jarves|javis|zarvis|jarvice|service|sarvis|travis|जार्विस|सर्विस)[,.]?\s*', '', q).strip()
         if not q:
-            return f"जी {Config.USER_NAME}, मैं सुन रहा हूँ।" if is_hindi_prompt else f"Yes {Config.USER_NAME}, I am listening."
+            from core.wakeword import wake_detector
+            return wake_detector.get_acknowledgement(raw_query)
+
+        # 1.5 Calling & Dialing (FaceTime Audio / Native Phone)
+        target_call = None
+        # Hindi: 'papa ko call lagao', 'rahul ko phone milao'
+        m_call = re.search(r'([a-zA-Z0-9_\+\s]+?)\s+ko\s+(?:call|phone)\s*(?:lagao|karo|milao)?', q)
+        if m_call:
+            target_call = m_call.group(1).strip()
+        else:
+            # Hindi inverted: 'phone lagao papa ko', 'call karo rahul ko'
+            m_call = re.search(r'(?:phone|call)\s*(?:lagao|karo|milao)\s+([a-zA-Z0-9_\+\s]+?)(?:\s+ko)?$', q)
+            if m_call:
+                target_call = m_call.group(1).strip()
+            else:
+                # English / direct: 'call papa', 'dial 9876543210', 'phone papa', 'call to rahul'
+                m_call = re.search(r'\b(?:call|dial|phone)\s+(?:to\s+)?([a-zA-Z0-9_\+]+)', q)
+                if m_call:
+                    t_cand = m_call.group(1).strip()
+                    if t_cand.lower() not in ["lagao", "karo", "milao", "up", "down", "back", "off"]:
+                        target_call = t_cand
+
+        if target_call:
+            target_call = re.sub(r'^(please|zara)\s+', '', target_call).strip()
+            if target_call:
+                return tools.make_phone_call(target_call)
+
+        # 1.6 Text Messaging, SMS, & WhatsApp
+        is_wa = "whatsapp" in q
+        m_msg = re.search(r'([a-zA-Z0-9_\+\s]+?)\s+ko\s+(?:whatsapp|message|text|sms)\s*(?:par\s+)?(?:bhejo|karo)\s*(?:ki\s+)?(.*)', q)
+        if not m_msg:
+            m_msg = re.search(r'(?:whatsapp|message|text|sms)\s*(?:par\s+)?(?:bhejo|karo)\s+([a-zA-Z0-9_\+\s]+?)\s+ko\s*(?:ki\s+)?(.*)', q)
+        if not m_msg:
+            m_msg = re.search(r'(?:text|message|sms|whatsapp|send message to)\s+([a-zA-Z0-9_\+]+)\s+(?:saying\s+|that\s+|ki\s+)?(.*)', q)
+
+        if m_msg:
+            target_person = m_msg.group(1).strip()
+            message_body = m_msg.group(2).strip()
+            platform = "whatsapp" if is_wa else "messages"
+            return tools.send_text_message(target_person, message_body, platform)
+
+        # 1.7 Add / Save Contact
+        save_match = re.search(r'(?:save contact|add contact)\s+([a-zA-Z\s]+)\s+(?:number\s+)?([0-9\+]+)', q)
+        if not save_match:
+            save_match = re.search(r'([a-zA-Z\s]+)\s+ka\s+number\s+([0-9\+]+)\s+(?:save|add)\s*karo', q)
+        if save_match:
+            c_name = save_match.group(1).strip()
+            c_num = save_match.group(2).strip()
+            return tools.add_contact(c_name, c_num)
 
         # 2. Weather
         if re.search(r'\b(weather|mausam|temperature|rain|barish)\b', q):

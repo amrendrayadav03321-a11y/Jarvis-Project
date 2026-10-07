@@ -21,14 +21,14 @@ class Listener:
     def __init__(self):
         self.recognizer = sr.Recognizer()
         
-        # Optimized acoustic thresholds for natural conversation
-        self.recognizer.energy_threshold = Config.MIC_ENERGY_THRESHOLD
+        # High-Speed Acoustic Tuning: Ultra-fast speech capture and low latency
+        self.recognizer.energy_threshold = int(getattr(Config, "MIC_ENERGY_THRESHOLD", 80))
         self.recognizer.dynamic_energy_threshold = True
-        self.recognizer.dynamic_energy_adjustment_damping = 0.15
-        self.recognizer.dynamic_energy_ratio = 1.5
-        self.recognizer.pause_threshold = 1.1        # Prevents premature cut-offs
-        self.recognizer.phrase_threshold = 0.25      # Starts capturing quickly
-        self.recognizer.non_speaking_duration = 0.6
+        self.recognizer.dynamic_energy_adjustment_damping = 0.10
+        self.recognizer.dynamic_energy_ratio = 1.25
+        self.recognizer.pause_threshold = 0.55        # Sub-second pause detection (ultra-fast response)
+        self.recognizer.phrase_threshold = 0.12       # Instantly triggers upon first spoken syllable
+        self.recognizer.non_speaking_duration = 0.35  # Cuts trailing silence rapidly
         
         self.language = Config.SPEECH_LANG
         self.calibrated = False
@@ -52,14 +52,13 @@ class Listener:
                 max_inputs = dev_info.get("maxInputChannels", 0)
                 
                 if max_inputs > 0:
-                    # Prefer Built-in / MacBook Air Microphone
+                    # Prefer Built-in / MacBook Air Microphone array
                     if any(k in name.lower() for k in ["macbook", "built-in", "internal microphone"]):
                         builtin_index = i
                         break
                     elif best_index is None:
                         best_index = i
                         
-            # Also check system default input
             try:
                 default_info = p.get_default_input_device_info()
                 default_idx = default_info.get("index")
@@ -74,29 +73,29 @@ class Listener:
             p.terminate()
 
     def calibrate(self):
-        """Calibrates microphone for ambient noise with safety clamps."""
+        """Calibrates microphone with high-sensitivity floor and safety clamps."""
         try:
             with sr.Microphone(device_index=self.device_index) as source:
-                self.recognizer.adjust_for_ambient_noise(source, duration=0.8)
-                # Safeguard: clamp energy threshold between 80 and 450
-                # Never let it become too deaf (500+) or hypersensitive (<70)
-                self.recognizer.energy_threshold = max(80, min(self.recognizer.energy_threshold, 450))
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.4)
+                # High sensitivity clamp: 30 to 220
+                # Ensures soft speech is never dropped, while loud noise doesn't permanently deafen mic
+                self.recognizer.energy_threshold = max(30, min(self.recognizer.energy_threshold, 220))
                 self.calibrated = True
         except Exception:
             self.calibrated = False
 
     def listen(self, status_callback=None) -> str:
-        """Listens from the microphone and returns recognized text."""
+        """Listens from the microphone with sub-second turnaround time."""
         try:
             with sr.Microphone(device_index=self.device_index) as source:
                 if not self.calibrated:
                     if status_callback:
                         status_callback("Calibrating acoustic sensors...")
-                    self.recognizer.adjust_for_ambient_noise(source, duration=0.6)
-                    self.recognizer.energy_threshold = max(80, min(self.recognizer.energy_threshold, 450))
+                    self.recognizer.adjust_for_ambient_noise(source, duration=0.3)
+                    self.recognizer.energy_threshold = max(30, min(self.recognizer.energy_threshold, 220))
                     self.calibrated = True
                 
-                # Audio chime to let user know Jarvis is listening right now
+                # Audio chime: ready to listen
                 AudioChimes.play("Tink")
                 
                 if status_callback:
@@ -108,19 +107,24 @@ class Listener:
                     phrase_time_limit=Config.MIC_PHRASE_LIMIT
                 )
                 
-                # Chime confirming speech audio has been captured
+                # Audio chime: audio captured
                 AudioChimes.play("Pop")
                 
                 if status_callback:
                     status_callback("Processing speech...")
                 
-                # Multi-lingual Speech-to-Text with Hindi/English fallback
+                # Rapid multi-lingual transcription with fast fallback
+                text = ""
                 try:
                     text = self.recognizer.recognize_google(audio, language=self.language)
                 except sr.UnknownValueError:
-                    # Fallback to Hindi if primary was English, or vice-versa
                     fallback_lang = "hi-IN" if self.language != "hi-IN" else "en-IN"
-                    text = self.recognizer.recognize_google(audio, language=fallback_lang)
+                    try:
+                        text = self.recognizer.recognize_google(audio, language=fallback_lang)
+                    except Exception:
+                        return ""
+                except Exception:
+                    return ""
                         
                 return text.strip()
 

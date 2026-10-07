@@ -21,6 +21,7 @@ __pycache__/
 ._*
 
 # User data & captures
+contacts.json
 notes/*.txt
 !notes/.gitkeep
 screenshots/*.png

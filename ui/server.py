@@ -41,7 +41,7 @@ class JarvisServer:
         self.messages = [
             {
                 "role": "jarvis",
-                "text": f"Jarvis tactical protocols online. Ready for your command, {Config.USER_NAME}.",
+                "text": f"Jarvis Mark 85 online. All tactical protocols armed and ready, {Config.USER_NAME}. Standing by for your directive.",
                 "time": time.strftime("%H:%M:%S")
             }
         ]

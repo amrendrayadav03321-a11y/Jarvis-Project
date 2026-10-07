@@ -5,72 +5,86 @@ from core.config import Config
 
 class WakeWordDetector:
     """Intelligent Wake Word and Background Audio Filter.
-    Filters out background noise, TV chatter, and background music
-    unless an explicit activation trigger like 'Hey Jarvis' or 'Jarvis' is detected.
+    Filters out background noise and TV chatter, while recognizing
+    all acoustic variants and direct user commands instantly.
     """
 
     def __init__(self):
-        # Comprehensive regex covering all English, Hindi, and transliterated wake phrases,
-        # including common speech recognition acoustic variants (jarvish, javis, etc.)
+        # Comprehensive regex covering all English, Hindi, and common acoustic ASR mis-transcriptions
+        # e.g., 'Hey Jarvis', 'Service', 'Travis', 'Jarvish', 'जार्विस', 'सर्विस', etc.
         self.wake_pattern = re.compile(
-            r'\b(hey|hi|hello|ok|okay|oye|o|suno|listen|arre|are|sun)?\s*(jarvis|jarvish|jarves|javis|zarvis|jarvice|जार्विस)\b',
+            r'\b(hey|hi|hello|ok|okay|oye|o|suno|listen|arre|are|sun|bhai|mr)?\s*(jarvis|jarvish|jarves|javis|zarvis|jarvice|service|sarvis|travis|harvest|जार्विस|सर्विस)\b',
             re.IGNORECASE
         )
 
+        # Direct imperative command triggers (instantly bypass wake word check to prevent dropping intentional user commands)
+        self.direct_command_pattern = re.compile(
+            r'^(call\s+|phone\s+|text\s+|message\s+|sms\s+|whatsapp\s+|play\s+|open\s+|launch\s+|close\s+|mute\b|unmute\b|volume\s+|screenshot\b|lock\s+|weather\b|mausam\b|time\b|date\b|battery\b|kholo\b|chalao\b|lagao\b|bhejo\b)',
+            re.IGNORECASE
+        )
+
+        # Cinematic, impressive activation responses (Iron Man Mark 85 style)
         self.en_acknowledgements = [
-            "Yes, sir?",
-            "At your service, sir.",
-            "Yes, I am listening.",
-            "Online and ready, sir.",
-            "How may I assist you, sir?"
+            f"At your command, {Config.USER_NAME}. All tactical protocols are primed and ready.",
+            f"Online and listening, {Config.USER_NAME}. What is your directive?",
+            f"Jarvis at your service, {Config.USER_NAME}. Standing by.",
+            f"Right here, {Config.USER_NAME}. How may I assist you today?",
+            f"Protocols active, {Config.USER_NAME}. Ready when you are.",
+            f"Always at your disposal, {Config.USER_NAME}. What are we building today?",
+            f"Sensors engaged and listening, {Config.USER_NAME}. Speak your command."
         ]
 
         self.hi_acknowledgements = [
-            "जी सर, बताइए?",
-            "हाँ सर, मैं सुन रहा हूँ।",
-            "जी सर, क्या हुक्म है?",
-            "सभी सिस्टम तैयार हैं, आज्ञा दीजिए।"
+            f"जी {Config.USER_NAME}! जार्विस आपकी सेवा में हाज़िर है। बताइए क्या हुक्म है?",
+            f"प्रणाम {Config.USER_NAME}, सभी सिस्टम पूरी तरह सक्रिय हैं। क्या आदेश है?",
+            f"जी {Config.USER_NAME}, मैं पूरी तरह सुन रहा हूँ। आज्ञा दीजिए।",
+            f"जार्विस एक्टिवेटेड, {Config.USER_NAME}। बताइए क्या करना है?",
+            f"हुक्म कीजिए {Config.USER_NAME}, सभी प्रोटोकॉल तैयार हैं।"
         ]
 
     def has_wake_word(self, text: str) -> bool:
-        """Returns True if the text contains any wake word variant."""
+        """Returns True if the text contains any wake word variant or direct command."""
         if not text:
             return False
-        return bool(self.wake_pattern.search(text))
+        return bool(self.wake_pattern.search(text) or self.direct_command_pattern.search(text.strip()))
 
     def extract_command(self, text: str) -> Tuple[bool, str]:
         """Checks if wake word is present and extracts the command part.
         Returns:
             (has_wake_word: bool, command: str)
-            - If wake word is present and followed/preceded by a command: (True, "play music")
+            - If wake word is present and followed/preceded by a command: (True, "call papa")
+            - If direct command is detected without wake word: (True, "call papa")
             - If wake word is present alone: (True, "")
             - If wake word is not present: (False, "")
         """
         if not text or not text.strip():
             return False, ""
 
-        match = self.wake_pattern.search(text)
-        if not match:
-            return False, ""
+        clean_text = text.strip()
 
-        start, end = match.span()
-        before = text[:start].strip()
-        after = text[end:].strip()
+        # 1. Check for wake word
+        match = self.wake_pattern.search(clean_text)
+        if match:
+            start, end = match.span()
+            before = clean_text[:start].strip()
+            after = clean_text[end:].strip()
 
-        raw_cmd = f"{before} {after}".strip()
-        # Clean leading and trailing punctuation
-        cleaned_cmd = re.sub(r'^[,\.\s:\-—]+', '', raw_cmd)
-        cleaned_cmd = re.sub(r'[,\.\s:\-—]+$', '', cleaned_cmd)
+            raw_cmd = f"{before} {after}".strip()
+            cleaned_cmd = re.sub(r'^[,\.\s:\-—]+', '', raw_cmd)
+            cleaned_cmd = re.sub(r'[,\.\s:\-—]+$', '', cleaned_cmd)
+            cleaned_cmd = re.sub(r'^(please|kripya|zara)\s+', '', cleaned_cmd, flags=re.IGNORECASE).strip()
+            return True, cleaned_cmd
 
-        # Strip courtesy fillers
-        cleaned_cmd = re.sub(r'^(please|kripya|zara)\s+', '', cleaned_cmd, flags=re.IGNORECASE).strip()
+        # 2. Check for direct imperative command bypass (zero dropped commands)
+        if self.direct_command_pattern.search(clean_text):
+            return True, clean_text
 
-        return True, cleaned_cmd
+        return False, ""
 
     def get_acknowledgement(self, query: str = "") -> str:
-        """Returns a polite, natural acknowledgement in Hindi or English."""
+        """Returns an impressive, cinematic acknowledgement in Hindi or English."""
         is_hindi = bool(re.search(r'[\u0900-\u097F]', query)) or any(
-            w in query.lower() for w in ["suno", "oye", "arre", "karo", "bhai", "kaisa", "batao"]
+            w in query.lower() for w in ["suno", "oye", "arre", "karo", "bhai", "kaisa", "batao", "bhejo", "lagao"]
         )
         if is_hindi:
             return random.choice(self.hi_acknowledgements)

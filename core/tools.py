@@ -473,4 +473,22 @@ class SystemTools:
         except Exception as e:
             return f"Execution error: {e}"
 
+    @staticmethod
+    def make_phone_call(contact_or_number: str) -> str:
+        """Calls a contact or phone number via FaceTime audio / iPhone cellular calling."""
+        from core.contacts import contacts_mgr
+        return contacts_mgr.make_call(contact_or_number)
+
+    @staticmethod
+    def send_text_message(recipient: str, message: str, platform: str = "messages") -> str:
+        """Sends an SMS/iMessage or WhatsApp message to a recipient or phone number."""
+        from core.contacts import contacts_mgr
+        return contacts_mgr.send_text(recipient, message, platform)
+
+    @staticmethod
+    def add_contact(name: str, phone: str) -> str:
+        """Saves a new contact to Jarvis address book."""
+        from core.contacts import contacts_mgr
+        return contacts_mgr.add_contact(name, phone)
+
 tools = SystemTools()

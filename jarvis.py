@@ -34,11 +34,18 @@ def run_tests():
     console.print(f"Utterance: 'Hey Jarvis play Kesariya' -> Wake Word: {t1_has}, Command: '{t1_cmd}'")
     console.print(f"Utterance: 'dancing in the dark with you' (Background Song) -> Wake Word: {t2_has} (FILTERED)")
     
-    console.print("\n[bold yellow]6. Testing Microphone Sensors:[/bold yellow]")
+    console.print("\n[bold yellow]6. Testing Communications & Contacts Module:[/bold yellow]")
+    from core.contacts import contacts_mgr
+    c_name, c_phone = contacts_mgr.find_contact("papa")
+    console.print(f"Contact Directory: 'papa' -> {c_name} ({c_phone})")
+    comm_test = brain.process("call papa")
+    console.print(f"Call Dispatch Test: {comm_test}")
+
+    console.print("\n[bold yellow]7. Testing Microphone Sensors:[/bold yellow]")
     listener.calibrate()
     console.print(f"Device index: {listener.device_index} | Energy threshold: {listener.recognizer.energy_threshold}")
     
-    console.print("\n[bold yellow]7. Testing Audio Output (Deep Male Voice):[/bold yellow]")
+    console.print("\n[bold yellow]8. Testing Audio Output (Deep Male Voice):[/bold yellow]")
     speaker.speak(f"Diagnostic complete. All systems are operational, {Config.USER_NAME}.")
     
     console.print("\n[bold green]✓ All self-tests passed successfully![/bold green]\n")
@@ -90,7 +97,7 @@ def main():
     hud.show_banner(brain_status, voice_status)
     
     # 5. Initial Greeting in Deep Male Voice
-    greeting = f"Jarvis systems fully initialized. All protocols active. Ready for your command, {Config.USER_NAME}."
+    greeting = f"Jarvis Mark 85 online. All tactical protocols armed and ready, {Config.USER_NAME}. Standing by for your directive."
     hud.print_jarvis(greeting)
     speaker.speak(greeting)
 
