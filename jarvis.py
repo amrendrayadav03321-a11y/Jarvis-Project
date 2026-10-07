@@ -41,11 +41,17 @@ def run_tests():
     comm_test = brain.process("call papa")
     console.print(f"Call Dispatch Test: {comm_test}")
 
-    console.print("\n[bold yellow]7. Testing Microphone Sensors:[/bold yellow]")
+    console.print("\n[bold yellow]7. Testing Advanced Actions (Math & Folders):[/bold yellow]")
+    math_res = tools.calculate("500 into 24")
+    console.print(f"Math calculation: '500 into 24' -> {math_res}")
+    app_res = tools.open_application("chrome")
+    console.print(f"App/Web dispatch: 'chrome' -> {app_res}")
+
+    console.print("\n[bold yellow]8. Testing Microphone Sensors:[/bold yellow]")
     listener.calibrate()
     console.print(f"Device index: {listener.device_index} | Energy threshold: {listener.recognizer.energy_threshold}")
     
-    console.print("\n[bold yellow]8. Testing Audio Output (Deep Male Voice):[/bold yellow]")
+    console.print("\n[bold yellow]9. Testing Audio Output (Deep Male Voice):[/bold yellow]")
     speaker.speak(f"Diagnostic complete. All systems are operational, {Config.USER_NAME}.")
     
     console.print("\n[bold green]✓ All self-tests passed successfully![/bold green]\n")

@@ -147,21 +147,41 @@ class SystemTools:
         candidates = []
         for sdir in search_dirs:
             if os.path.exists(sdir):
-                for item in os.listdir(sdir):
-                    if item.endswith(".app"):
-                        name = item[:-4]
-                        if app_name_clean == name.lower():
-                            subprocess.run(["open", os.path.join(sdir, item)])
-                            return f"Opening {name}, sir."
-                        elif app_name_clean in name.lower():
-                            candidates.append((name, os.path.join(sdir, item)))
+                try:
+                    for item in os.listdir(sdir):
+                        if item.endswith(".app"):
+                            name = item[:-4]
+                            if app_name_clean == name.lower():
+                                subprocess.run(["open", os.path.join(sdir, item)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                return f"Opening {name}, sir."
+                            elif app_name_clean in name.lower():
+                                candidates.append((name, os.path.join(sdir, item)))
+                except Exception:
+                    continue
                             
         if candidates:
             # Pick closest candidate
             best_name, best_path = candidates[0]
-            subprocess.run(["open", best_path])
+            subprocess.run(["open", best_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return f"Opening {best_name}, sir."
             
+        # Fallback to web app if desktop app is not installed
+        web_fallbacks = {
+            "spotify": "https://open.spotify.com",
+            "chrome": "https://google.com",
+            "whatsapp": "https://web.whatsapp.com",
+            "netflix": "https://netflix.com",
+            "youtube": "https://youtube.com",
+            "instagram": "https://instagram.com",
+            "chatgpt": "https://chatgpt.com",
+            "github": "https://github.com",
+            "twitter": "https://x.com",
+            "x": "https://x.com"
+        }
+        if app_name_clean in web_fallbacks:
+            subprocess.run(["open", web_fallbacks[app_name_clean]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return f"Opening {app_name_clean.title()} in your browser, sir."
+
         return f"Could not locate application '{app_name}' on your Mac."
 
     @staticmethod
@@ -184,16 +204,16 @@ class SystemTools:
             else:
                 target = f"https://www.{target}.com"
                 
-        subprocess.run(["open", target])
-        return f"Opening {target} in your browser."
+        subprocess.run(["open", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return f"Opening {target} in your browser, sir."
 
     @staticmethod
     def search_google(query: str) -> str:
         """Performs a Google search in browser."""
         encoded = urllib.parse.quote(query)
         url = f"https://www.google.com/search?q={encoded}"
-        subprocess.run(["open", url])
-        return f"Searching Google for '{query}'."
+        subprocess.run(["open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return f"Searching Google for '{query}', sir."
 
     @staticmethod
     def play_youtube(query: str) -> str:
@@ -208,15 +228,15 @@ class SystemTools:
                 video_ids = re.findall(r'\"videoId\":\"([a-zA-Z0-9_-]{11})\"', res.text)
                 if video_ids:
                     direct_watch_url = f"https://www.youtube.com/watch?v={video_ids[0]}"
-                    subprocess.run(["open", direct_watch_url])
+                    subprocess.run(["open", direct_watch_url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     return f"Playing '{query}' directly on YouTube, sir."
 
             # Fallback to search results
-            subprocess.run(["open", search_url])
+            subprocess.run(["open", search_url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return f"Playing '{query}' on YouTube, sir."
         except Exception:
             encoded = urllib.parse.quote(query)
-            subprocess.run(["open", f"https://www.youtube.com/results?search_query={encoded}"])
+            subprocess.run(["open", f"https://www.youtube.com/results?search_query={encoded}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return f"Playing '{query}' on YouTube, sir."
 
     @staticmethod
@@ -490,5 +510,165 @@ class SystemTools:
         """Saves a new contact to Jarvis address book."""
         from core.contacts import contacts_mgr
         return contacts_mgr.add_contact(name, phone)
+
+    @staticmethod
+    def toggle_dark_mode(state: Optional[bool] = None) -> str:
+        """Toggles or sets macOS Dark Mode / Light Mode."""
+        try:
+            if state is True:
+                script = 'tell application "System Events" to tell appearance preferences to set dark mode to true'
+                subprocess.run(["osascript", "-e", script], check=True)
+                return "Dark mode enabled, sir."
+            elif state is False:
+                script = 'tell application "System Events" to tell appearance preferences to set dark mode to false'
+                subprocess.run(["osascript", "-e", script], check=True)
+                return "Light mode enabled, sir."
+            else:
+                script = 'tell application "System Events" to tell appearance preferences to set dark mode to not dark mode'
+                subprocess.run(["osascript", "-e", script], check=True)
+                return "Toggled system appearance mode, sir."
+        except Exception as e:
+            return f"Failed to toggle dark mode: {e}"
+
+    @staticmethod
+    def open_folder(folder_name: str) -> str:
+        """Opens user folders (Downloads, Documents, Desktop, etc.) in Finder."""
+        target = folder_name.lower().strip()
+        home = Path.home()
+        mapping = {
+            "downloads": home / "Downloads",
+            "documents": home / "Documents",
+            "desktop": home / "Desktop",
+            "pictures": home / "Pictures",
+            "photos": home / "Pictures",
+            "music": home / "Music",
+            "movies": home / "Movies",
+            "videos": home / "Movies",
+            "applications": Path("/Applications"),
+            "home": home
+        }
+        path = mapping.get(target)
+        if not path:
+            for k, p in mapping.items():
+                if k in target or target in k:
+                    path = p
+                    break
+        if not path:
+            path = home / folder_name.strip()
+            
+        if path.exists():
+            subprocess.run(["open", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return f"Opening {path.name} folder in Finder, sir."
+        return f"Could not find folder '{folder_name}' on your Mac."
+
+    @staticmethod
+    def copy_to_clipboard(text: str) -> str:
+        """Copies text to macOS clipboard."""
+        try:
+            subprocess.run(["pbcopy"], input=text.encode("utf-8"), check=True)
+            return "Copied to your clipboard, sir."
+        except Exception as e:
+            return f"Failed to copy to clipboard: {e}"
+
+    @staticmethod
+    def read_clipboard() -> str:
+        """Reads content from macOS clipboard."""
+        try:
+            res = subprocess.run(["pbpaste"], capture_output=True, text=True)
+            content = res.stdout.strip()
+            if not content:
+                return "Your clipboard is currently empty, sir."
+            return f"Clipboard contents: {content[:300]}"
+        except Exception as e:
+            return f"Failed to read clipboard: {e}"
+
+    @staticmethod
+    def calculate(expression: str) -> str:
+        """Evaluates mathematical expressions safely."""
+        import math
+        expr = expression.lower().strip()
+        expr = re.sub(r'(\d+(?:\.\d+)?)\s*%\s*of\s*(\d+(?:\.\d+)?)', r'(\1/100)*\2', expr)
+        expr = re.sub(r'(\d+(?:\.\d+)?)\s*%', r'(\1/100)', expr)
+        expr = expr.replace('^', '**').replace('x', '*').replace('into', '*').replace('divided by', '/').replace('plus', '+').replace('minus', '-')
+        clean_expr = re.sub(r'[^0-9\+\-\*\/\(\)\.\s]', '', expr)
+        try:
+            val = eval(clean_expr, {'__builtins__': None}, {'sqrt': math.sqrt, 'sin': math.sin, 'cos': math.cos, 'pi': math.pi})
+            if isinstance(val, float) and val.is_integer():
+                val = int(val)
+            return f"The calculation result is {val}, sir."
+        except Exception as e:
+            return f"Could not calculate expression '{expression}': {e}"
+
+    @staticmethod
+    def find_files(filename_query: str) -> str:
+        """Uses macOS Spotlight to search for files instantly."""
+        try:
+            clean_q = filename_query.strip().replace('"', '')
+            res = subprocess.run(["mdfind", "-name", clean_q], capture_output=True, text=True, timeout=5)
+            lines = [l.strip() for l in res.stdout.splitlines() if l.strip() and not l.startswith("2026-")]
+            if not lines:
+                return f"No files found matching '{filename_query}', sir."
+            top_matches = [Path(p).name for p in lines[:5]]
+            return f"Found matching files on your Mac: {', '.join(top_matches)}."
+        except Exception as e:
+            return f"Search error: {e}"
+
+    @staticmethod
+    def open_system_setting(setting_name: str) -> str:
+        """Opens specific macOS System Settings pane."""
+        s = setting_name.lower().strip()
+        panes = {
+            "wifi": "x-apple.systempreferences:com.apple.wifi-settings.extension",
+            "wi-fi": "x-apple.systempreferences:com.apple.wifi-settings.extension",
+            "bluetooth": "x-apple.systempreferences:com.apple.BluetoothSettings",
+            "display": "x-apple.systempreferences:com.apple.Displays-Settings.extension",
+            "displays": "x-apple.systempreferences:com.apple.Displays-Settings.extension",
+            "brightness": "x-apple.systempreferences:com.apple.Displays-Settings.extension",
+            "sound": "x-apple.systempreferences:com.apple.Sound-Settings.extension",
+            "audio": "x-apple.systempreferences:com.apple.Sound-Settings.extension",
+            "battery": "x-apple.systempreferences:com.apple.Battery-Settings.extension",
+            "wallpaper": "x-apple.systempreferences:com.apple.Wallpaper-Settings.extension",
+            "privacy": "x-apple.systempreferences:com.apple.preference.security",
+            "security": "x-apple.systempreferences:com.apple.preference.security",
+            "lock": "x-apple.systempreferences:com.apple.Lock-Screen-Settings.extension"
+        }
+        url = panes.get(s)
+        if not url:
+            for k, u in panes.items():
+                if k in s:
+                    url = u
+                    break
+        if not url:
+            url = "x-apple.systempreferences:com.apple.systempreferences"
+            
+        subprocess.run(["open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return f"Opened macOS System Settings for '{setting_name}', sir."
+
+    @staticmethod
+    def sleep_mac() -> str:
+        """Puts macOS to sleep."""
+        try:
+            subprocess.Popen(["pmset", "sleepnow"])
+            return "Putting Mac to sleep, sir."
+        except Exception as e:
+            return f"Failed to sleep Mac: {e}"
+
+    @staticmethod
+    def restart_mac() -> str:
+        """Restarts Mac."""
+        try:
+            subprocess.run(["osascript", "-e", 'tell application "System Events" to restart'])
+            return "Initiating system restart, sir."
+        except Exception as e:
+            return f"Failed to restart Mac: {e}"
+
+    @staticmethod
+    def shutdown_mac() -> str:
+        """Shuts down Mac."""
+        try:
+            subprocess.run(["osascript", "-e", 'tell application "System Events" to shut down'])
+            return "Initiating system shutdown, sir."
+        except Exception as e:
+            return f"Failed to shut down Mac: {e}"
 
 tools = SystemTools()

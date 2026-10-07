@@ -41,6 +41,16 @@ class AssistantBrain:
                 tools.make_phone_call,
                 tools.send_text_message,
                 tools.add_contact,
+                tools.toggle_dark_mode,
+                tools.open_folder,
+                tools.copy_to_clipboard,
+                tools.read_clipboard,
+                tools.calculate,
+                tools.find_files,
+                tools.open_system_setting,
+                tools.sleep_mac,
+                tools.restart_mac,
+                tools.shutdown_mac,
                 tools.search_wikipedia,
                 tools.take_screenshot,
                 tools.set_volume,
@@ -69,11 +79,15 @@ class AssistantBrain:
                 "     you MUST respond in fluent, respectful, natural Hindi or Hinglish (e.g. 'जी सर, अभी प्ले कर रहा हूँ।', 'सर, आज मौसम साफ है।', 'जी सर, खोल दिया है।').\n"
                 "   - If the user speaks in English, respond in sleek British Jarvis English.\n\n"
                 "2. IMMEDIATE ACTION-FIRST EXECUTION:\n"
-                "   - When the user asks to do ANY task (make a call, send a text, play a song, open an application, adjust volume, take a screenshot, lock screen, check battery, check weather), "
-                "     DO NOT give lengthy disclaimers or talk about it—IMMEDIATELY CALL THE APPROPRIATE TOOL.\n"
+                "   - You have complete control over macOS. When the user asks for ANY command or task, DO NOT talk or give disclaimers—IMMEDIATELY CALL THE APPROPRIATE TOOL.\n"
+                "   - For music requests ('play Kesariya', 'gaana chalao', 'Arijit Singh song'), call 'play_youtube'.\n"
                 "   - For phone calls ('call Rohit', 'Papa ko call karo', 'call 9876543210'), call 'make_phone_call'.\n"
-                "   - For text messages ('text Rohit I am late', 'Papa ko message bhejo ki nikal gaya hoon', 'WhatsApp Aman Hello'), call 'send_text_message'.\n"
-                "   - For music requests, pass the exact song or artist to 'play_youtube' so it plays immediately.\n"
+                "   - For text messages ('text Rohit I am late', 'Papa ko message bhejo', 'WhatsApp Aman'), call 'send_text_message'.\n"
+                "   - For applications/websites ('open Chrome', 'Spotify kholo', 'open YouTube'), call 'open_application' or 'open_website'.\n"
+                "   - For folders ('downloads folder kholo'), call 'open_folder'.\n"
+                "   - For dark mode ('dark mode on karo'), call 'toggle_dark_mode'.\n"
+                "   - For calculations ('calculate 500 * 24'), call 'calculate'.\n"
+                "   - For system controls (volume, screen lock, screenshot, clipboard, battery, weather), call the corresponding tool.\n"
                 "   - Keep spoken answers brief (1 or 2 crisp sentences) so they are fast and conversational over voice."
             )
             
@@ -83,7 +97,7 @@ class AssistantBrain:
                 temperature=0.7
             )
             
-            models_to_try = [Config.GEMINI_MODEL, "gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-flash-latest"]
+            models_to_try = [Config.GEMINI_MODEL, "gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-flash-latest", "gemini-2.5-flash"]
             seen = set()
             for m in models_to_try:
                 if not m or m in seen:
@@ -126,7 +140,7 @@ class AssistantBrain:
         """High-accuracy multi-lingual intent matching for voice commands in English & Hinglish."""
         q = raw_query.lower().strip()
         is_hindi_prompt = bool(re.search(r'[\u0900-\u097F]', raw_query)) or any(
-            w in q for w in ["karo", "kholo", "chalao", "sunao", "batao", "kaise", "kya", "kitni", "hai", "likho", "saaf", "gaana", "roko", "kisne"]
+            w in q for w in ["karo", "kholo", "chalao", "sunao", "batao", "kaise", "kya", "kitni", "hai", "likho", "saaf", "gaana", "roko", "kisne", "badhao"]
         )
         
         # 0. Creator / Developer queries
@@ -175,17 +189,14 @@ class AssistantBrain:
 
         # 1.5 Calling & Dialing (FaceTime Audio / Native Phone)
         target_call = None
-        # Hindi: 'papa ko call lagao', 'rahul ko phone milao'
         m_call = re.search(r'([a-zA-Z0-9_\+\s]+?)\s+ko\s+(?:call|phone)\s*(?:lagao|karo|milao)?', q)
         if m_call:
             target_call = m_call.group(1).strip()
         else:
-            # Hindi inverted: 'phone lagao papa ko', 'call karo rahul ko'
             m_call = re.search(r'(?:phone|call)\s*(?:lagao|karo|milao)\s+([a-zA-Z0-9_\+\s]+?)(?:\s+ko)?$', q)
             if m_call:
                 target_call = m_call.group(1).strip()
             else:
-                # English / direct: 'call papa', 'dial 9876543210', 'phone papa', 'call to rahul'
                 m_call = re.search(r'\b(?:call|dial|phone)\s+(?:to\s+)?([a-zA-Z0-9_\+]+)', q)
                 if m_call:
                     t_cand = m_call.group(1).strip()
@@ -228,77 +239,122 @@ class AssistantBrain:
 
         # 3. Time & Date
         if re.search(r'\b(time|date|din|baje|clock|samay|tarikh)\b', q):
-            if any(w in q for w in ["what time", "current time", "time kya", "kitne baje", "today's date", "aaj kaun sa din", "date kya hai", "time please"]):
+            if any(w in q for w in ["what time", "current time", "time kya", "kitne baje", "today's date", "aaj kaun sa din", "date kya hai", "time please", "samay kya"]):
                 return tools.get_time_and_date()
 
         # 4. Battery status
-        if re.search(r'\b(battery|charging)\b', q):
+        if re.search(r'\b(battery|charging|charge)\b', q):
             return tools.get_battery_status()
 
         # 5. System Health / Stats
         if re.search(r'\b(system status|system stats|cpu|ram|memory usage|mac health|performance)\b', q):
             return tools.get_system_stats()
 
-        # 6. Volume controls
+        # 6. Dark Mode / Light Mode
+        if re.search(r'\b(dark mode|light mode)\b', q):
+            if any(w in q for w in ["on", "enable", "chalu", "lagao"]):
+                return tools.toggle_dark_mode(True)
+            elif any(w in q for w in ["off", "disable", "hatao", "band"]):
+                return tools.toggle_dark_mode(False)
+            return tools.toggle_dark_mode(None)
+
+        # 7. Volume controls (English & Hindi)
         vol_match = re.search(r'(?:set\s+)?volume\s+(?:to\s+)?(\d+)', q)
         if vol_match:
             return tools.set_volume(int(vol_match.group(1)))
 
-        if re.search(r'\b(volume up|increase volume|volume badhao|sound badhao)\b', q):
+        if re.search(r'\b(volume up|increase volume|volume badhao|sound badhao|awaaz badhao|awaz badhao)\b', q):
             tools.adjust_volume(15)
             return "सर, आवाज़ बढ़ा दी गई है।" if is_hindi_prompt else "Volume increased, sir."
 
-        if re.search(r'\b(volume down|decrease volume|volume kam karo|sound kam karo)\b', q):
+        if re.search(r'\b(volume down|decrease volume|volume kam karo|sound kam karo|awaaz kam karo|awaz kam karo)\b', q):
             tools.adjust_volume(-15)
             return "सर, आवाज़ कम कर दी गई है।" if is_hindi_prompt else "Volume decreased, sir."
 
-        if re.search(r'\b(mute|awaz band|quiet)\b', q):
+        if re.search(r'\b(mute|awaz band|awaaz band|quiet)\b', q):
             tools.mute_volume(True)
             return "आवाज़ म्यूट कर दी गई है, सर।" if is_hindi_prompt else "Audio muted, sir."
 
-        if re.search(r'\b(unmute|awaz chalu)\b', q):
+        if re.search(r'\b(unmute|awaz chalu|awaaz chalu)\b', q):
             tools.mute_volume(False)
             return "आवाज़ अनम्यूट कर दी गई है, सर।" if is_hindi_prompt else "Audio unmuted, sir."
 
-        # 7. Media Playback Controls (Pause / Resume / Next)
-        if re.search(r'\b(pause|stop music|gaana roko|pause song)\b', q):
+        # 8. Media Playback Controls (Pause / Resume / Next)
+        if re.search(r'\b(pause|stop music|gaana roko|pause song|gana roko)\b', q):
             return tools.control_media("pause")
-        if re.search(r'\b(resume|continue music|gaana chalu|play music)\b', q) and not any(w in q for w in ["youtube", "spotify"]):
+        if re.search(r'\b(resume|continue music|gaana chalu|gana chalu)\b', q):
             return tools.control_media("play")
-        if re.search(r'\b(next song|skip song|agla gaana)\b', q):
+        if re.search(r'\b(next song|skip song|agla gaana|agla gana)\b', q):
             return tools.control_media("next")
 
-        # 8. Screenshot
-        if re.search(r'\b(screenshot|screen capture|screen shot)\b', q):
+        # 9. Screenshot
+        if re.search(r'\b(screenshot|screen capture|screen shot|screenshot lo|screenshot kheencho)\b', q):
             name_match = re.search(r'(?:named|name|as)\s+([a-zA-Z0-9_\-]+)', q)
             custom_name = name_match.group(1) if name_match else None
             return tools.take_screenshot(custom_name)
 
-        # 9. Lock screen / Sleep
-        if re.search(r'\b(lock screen|lock mac|screen lock|screen band karo|sleep mac)\b', q):
+        # 10. Screen Lock / Mac Sleep / Restart / Shutdown
+        if re.search(r'\b(lock screen|lock mac|screen lock|screen band karo|laptop lock)\b', q):
             tools.lock_screen()
             return "स्क्रीन लॉक कर दी गई है, सर।" if is_hindi_prompt else "Screen locked, sir."
+        if re.search(r'\b(sleep mac|mac sleep|laptop sleep|mac ko sula do)\b', q):
+            return tools.sleep_mac()
+        if re.search(r'\b(restart mac|reboot mac|mac restart karo)\b', q):
+            return tools.restart_mac()
+        if re.search(r'\b(shutdown mac|shut down mac|mac shut down|mac band karo)\b', q):
+            return tools.shutdown_mac()
 
-        # 10. Empty Trash
+        # 11. Empty Trash
         if re.search(r'\b(empty trash|trash saaf|clear trash)\b', q):
             return tools.empty_trash()
 
-        # 11. Music / YouTube Play Direct
-        if any(q.startswith(w) for w in ["play", "chalao", "sunao", "baja do"]):
-            target = re.sub(r'^(play|chalao|sunao|baja do)\s*', '', q)
-            target = re.sub(r'\s+(song|gaana|music|on youtube|video)$', '', target).strip()
-            if target.lower() in ["song", "songs", "gaana", "music", "a song", "some music", "some songs", ""]:
+        # 12. Open Folder in Finder
+        m_folder = re.search(r'(?:open\s+)?\b(downloads|documents|desktop|pictures|music|movies|applications)\b(?:\s+folder)?(?:\s+(?:kholo|open karo))?', q)
+        if m_folder and any(w in q for w in ["folder", "downloads", "documents", "desktop", "kholo", "open"]):
+            return tools.open_folder(m_folder.group(1))
+
+        # 13. System Settings Panes
+        if re.search(r'\b(settings|preferences)\b', q):
+            pane_match = re.search(r'\b(wifi|wi-fi|bluetooth|display|displays|brightness|sound|battery|wallpaper|privacy)\b', q)
+            pane = pane_match.group(1) if pane_match else "general"
+            return tools.open_system_setting(pane)
+
+        # 14. Clipboard Copy & Read
+        if any(w in q for w in ["clipboard copy", "copy to clipboard", "clipboard par copy"]):
+            text_to_copy = re.sub(r'.*?(?:clipboard copy|copy to clipboard|clipboard par copy)\s*(?:karo)?\s*', '', q).strip()
+            if text_to_copy:
+                return tools.copy_to_clipboard(text_to_copy)
+        if any(w in q for w in ["read clipboard", "clipboard read", "clipboard dikhao", "clipboard par kya hai"]):
+            return tools.read_clipboard()
+
+        # 15. Math & Calculator
+        if any(w in q for w in ["calculate", "hisab karo", "kitna hota hai"]) or re.search(r'^\s*\d+[\d\s\+\-\*\/\%\^\.x]+\s*$', q):
+            clean_math = re.sub(r'.*?(?:calculate|hisab karo)\s*', '', q)
+            clean_math = re.sub(r'\s*kitna hota hai.*', '', clean_math).strip()
+            return tools.calculate(clean_math)
+
+        # 16. Spotlight File Search
+        if any(w in q for w in ["find file", "search file", "file dhoondo", "locate file"]):
+            f_target = re.sub(r'.*?(?:find file|search file|file dhoondo|locate file)\s*', '', q).strip()
+            if f_target:
+                return tools.find_files(f_target)
+
+        # 17. Music / YouTube Play Direct (Hindi verb-final + English verb-initial)
+        m_music = re.search(r'^(?:play|chalao|bajao|sunao|lagao)\s+(.+)', q)
+        if not m_music:
+            m_music = re.search(r'(.+?)\s+(?:gaana|gana|song|music|video)\s*(?:chalao|bajao|sunao|lagao|play karo|play)?$', q)
+        if not m_music:
+            m_music = re.search(r'(.+?)\s+(?:chalao|bajao|sunao|lagao)$', q)
+            
+        if m_music:
+            song_target = m_music.group(1).strip()
+            song_target = re.sub(r'^(please|zara|koi|koi accha|koi badhiya)\s+', '', song_target).strip()
+            song_target = re.sub(r'\s+(song|gaana|gana|music|on youtube|video)$', '', song_target).strip()
+            if song_target in ["", "song", "gaana", "gana", "music", "songs"]:
                 return tools.play_youtube("trending top hits")
-            return tools.play_youtube(target)
+            return tools.play_youtube(song_target)
 
-        if "youtube" in q and any(w in q for w in ["play", "chalao", "open", "kholo", "search"]):
-            target = re.sub(r'.*?(?:play|search|chalao)\s+', '', q)
-            target = re.sub(r'\s+(?:on|in)?\s*youtube.*', '', target).strip()
-            if target and target != "youtube":
-                return tools.play_youtube(target)
-            return tools.open_website("youtube.com")
-
-        # 12. Google Search
+        # 18. Google Search
         if any(w in q for w in ["google search", "search google", "google pe search", "google karo"]):
             target = re.sub(r'.*?(?:google search|search google|google pe search|google karo)\s*(?:for|about)?\s*', '', q).strip()
             if target:
@@ -310,13 +366,13 @@ class AssistantBrain:
             if target:
                 return tools.search_google(target)
 
-        # 13. Wikipedia / Knowledge
+        # 19. Wikipedia / Knowledge
         if any(q.startswith(w) for w in ["who is", "who was", "what is", "tell me about", "wikipedia"]):
             target = re.sub(r'^(who is|who was|what is|tell me about|wikipedia)\s*', '', q).strip()
             if target:
                 return tools.search_wikipedia(target)
 
-        # 14. Notes Management
+        # 20. Notes Management
         if any(w in q for w in ["read note", "read my note", "notes padho", "show notes", "list notes"]):
             return tools.read_notes()
 
@@ -326,37 +382,47 @@ class AssistantBrain:
                 return tools.create_note(content)
             return "नोट में क्या लिखना है, सर?" if is_hindi_prompt else "What would you like me to write in the note, sir?"
 
-        # 15. Jokes
+        # 21. Jokes
         if re.search(r'\b(joke|hasao|chutkula|laugh)\b', q):
             return tools.tell_joke()
 
-        # 16. Open Applications / Websites
-        if any(q.startswith(w) for w in ["open", "launch", "start", "kholo", "run"]):
-            target = re.sub(r'^(open|launch|start|kholo|run)\s*', '', q)
-            target = re.sub(r'\s+(kholo|start karo|open karo)$', '', target).strip()
+        # 22. Open Applications & Websites (Handles 'chrome kholo', 'open chrome', 'spotify open karo')
+        m_open = re.search(r'^(?:open|launch|start|kholo|run)\s+(.+)', q)
+        if not m_open:
+            m_open = re.search(r'(.+?)\s+(?:kholo|open karo|start karo|chalu karo|run karo)$', q)
+            
+        if m_open:
+            app_target = m_open.group(1).strip()
+            app_target = re.sub(r'^(please|zara)\s+', '', app_target).strip()
             
             web_domains = ["youtube", "google", "github", "chatgpt", "netflix", "gmail", "twitter", "reddit", "instagram", "whatsapp"]
-            if any(dom == target or f"{dom}.com" == target for dom in web_domains):
-                return tools.open_website(target)
+            if any(dom == app_target or f"{dom}.com" == app_target for dom in web_domains):
+                return tools.open_website(app_target)
                 
-            if re.search(r'\.(com|org|ai|io|net|dev|in|co)$', target):
-                return tools.open_website(target)
+            if re.search(r'\.(com|org|ai|io|net|dev|in|co)$', app_target):
+                return tools.open_website(app_target)
                 
-            return tools.open_application(target)
+            return tools.open_application(app_target)
 
-        # 17. Close Application
-        if any(q.startswith(w) for w in ["close", "quit", "band karo"]):
-            target = re.sub(r'^(close|quit|band karo)\s*', '', q)
-            target = re.sub(r'\s+(band karo|close karo)$', '', target).strip()
-            return tools.close_application(target)
+        # 23. Close Application (Handles 'chrome band karo', 'close chrome', 'spotify quit karo')
+        m_close = re.search(r'^(?:close|quit|band karo|exit)\s+(.+)', q)
+        if not m_close:
+            m_close = re.search(r'(.+?)\s+(?:band karo|close karo|quit karo)$', q)
+            
+        if m_close:
+            close_target = m_close.group(1).strip()
+            return tools.close_application(close_target)
 
-        # Default fallback
+        # 24. Default fallback: perform Google Search or smart action rather than saying "I don't know"
+        if len(q.split()) > 2 and any(w in q for w in ["kahan", "kaise", "kyun", "who", "what", "where", "how", "why"]):
+            return tools.search_google(raw_query)
+
         if is_hindi_prompt:
-            return f"जी {Config.USER_NAME}, मैंने सुना: '{raw_query}'। आप मुझसे यूट्यूब पर सीधे गाना चलाने, ऐप्स खोलने, मौसम देखने या स्क्रीनशॉट लेने को कह सकते हैं।"
+            return f"जी {Config.USER_NAME}, मैंने सुना: '{raw_query}'। आप मुझसे यूट्यूब पर गाना चलाने, ऐप्स खोलने, मौसम देखने, कॉल करने या स्क्रीनशॉट लेने को कह सकते हैं।"
         return (
             f"I understood: '{raw_query}'. "
-            "You can ask me: 'open YouTube', 'play Bohemian Rhapsody', 'take screenshot', 'volume 70', 'check battery', "
-            "'what is the weather in Mumbai', 'who is Albert Einstein', or 'tell me a joke'."
+            "You can ask me: 'open Chrome', 'play Bohemian Rhapsody', 'call Papa', 'take screenshot', 'volume 70', 'check battery', "
+            "'what is the weather in Mumbai', or 'dark mode on'."
         )
 
 brain = AssistantBrain()

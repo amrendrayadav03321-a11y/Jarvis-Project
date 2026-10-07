@@ -19,7 +19,8 @@ class WakeWordDetector:
 
         # Direct imperative command triggers (instantly bypass wake word check to prevent dropping intentional user commands)
         self.direct_command_pattern = re.compile(
-            r'^(call\s+|phone\s+|text\s+|message\s+|sms\s+|whatsapp\s+|play\s+|open\s+|launch\s+|close\s+|mute\b|unmute\b|volume\s+|screenshot\b|lock\s+|weather\b|mausam\b|time\b|date\b|battery\b|kholo\b|chalao\b|lagao\b|bhejo\b)',
+            r'(\b(call|phone|dial|text|message|sms|whatsapp|play|open|launch|close|quit|mute|unmute|volume|sound|awaaz|screenshot|lock|sleep|restart|shutdown|weather|mausam|time|date|battery|brightness|dark mode|trash|joke|chutkula|calculate|search|google|kholo|chalao|bajao|lagao|bhejo|batao|sunao|badhao|kam karo|band karo|kheencho|nikalo|padho|likho)\b|'
+            r'(खोल|चला|बजा|लगा|भेज|बता|सुना|बढ़ा|कम|बंद|लॉक|स्क्रीनशॉट|कॉल|मैसेज|गाना|मौसम|समय|हिसाब|कैलकुलेट|लिखो))',
             re.IGNORECASE
         )
 
