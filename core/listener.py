@@ -16,9 +16,9 @@ class Listener:
         self.recognizer.dynamic_energy_threshold = True
         self.recognizer.dynamic_energy_adjustment_damping = 0.15
         self.recognizer.dynamic_energy_ratio = 1.3
-        self.recognizer.pause_threshold = 0.8         # Natural human pause duration (does not cut off mid-sentence)
-        self.recognizer.phrase_threshold = 0.25       # Filters out lip smacks and minor room clicks
-        self.recognizer.non_speaking_duration = 0.5   # Clean trailing silence
+        self.recognizer.pause_threshold = 0.65        # Fast human pause turnaround (sub-second command finalization)
+        self.recognizer.phrase_threshold = 0.20       # Fast syllable trigger
+        self.recognizer.non_speaking_duration = 0.40  # Cuts trailing silence rapidly
         
         self.language = Config.SPEECH_LANG
         self.calibrated = False

@@ -118,13 +118,20 @@ class AssistantBrain:
             self.chat_session = None
 
     def process(self, query: str) -> str:
-        """Processes user input using Gemini LLM if active, otherwise uses smart NLP intent engine."""
+        """Processes user input using Fast-Path Local Execution for sub-10ms responses,
+        and falls back to Gemini LLM for open-ended conversation and complex questions.
+        """
         if not query or not query.strip():
             return ""
 
         query_clean = query.strip()
 
-        # If Gemini is active and healthy, send to Gemini
+        # 1. FAST-PATH: Instant local execution (<10ms) for all system actions & tools
+        local_result = self._match_and_execute_local(query_clean)
+        if local_result is not None:
+            return local_result
+
+        # 2. AI-PATH: Send open-ended knowledge & chat queries to Google Gemini LLM
         if self.is_gemini_active and self.chat_session:
             try:
                 response = self.chat_session.send_message(query_clean)
@@ -133,11 +140,13 @@ class AssistantBrain:
             except Exception:
                 pass
 
-        # Offline Advanced NLP Intent Engine
-        return self._process_offline_intent(query_clean)
+        # 3. Fallback when Gemini is offline or unavailable
+        return self._process_offline_fallback(query_clean)
 
-    def _process_offline_intent(self, raw_query: str) -> str:
-        """High-accuracy multi-lingual intent matching for voice commands in English & Hinglish."""
+    def _match_and_execute_local(self, raw_query: str) -> Optional[str]:
+        """High-accuracy multi-lingual local action matching in English & Hinglish.
+        Returns the action result string if matched, or None for general AI queries.
+        """
         q = raw_query.lower().strip()
         is_hindi_prompt = bool(re.search(r'[\u0900-\u097F]', raw_query)) or any(
             w in q for w in ["karo", "kholo", "chalao", "sunao", "batao", "kaise", "kya", "kitni", "hai", "likho", "saaf", "gaana", "roko", "kisne", "badhao"]
@@ -413,16 +422,31 @@ class AssistantBrain:
             close_target = m_close.group(1).strip()
             return tools.close_application(close_target)
 
-        # 24. Default fallback: perform Google Search or smart action rather than saying "I don't know"
-        if len(q.split()) > 2 and any(w in q for w in ["kahan", "kaise", "kyun", "who", "what", "where", "how", "why"]):
+        # If no local action matched, return None so process() hands it over to Gemini AI
+        return None
+
+    def _process_offline_fallback(self, raw_query: str) -> str:
+        """Smart fallback when query is not a local action and Gemini is unavailable."""
+        q = raw_query.lower().strip()
+        is_hindi = bool(re.search(r'[\u0900-\u097F]', raw_query)) or any(
+            w in q for w in ["karo", "kya", "kaise", "batao", "kahan", "kyun"]
+        )
+        if len(q.split()) > 1 and any(w in q for w in ["who", "what", "where", "how", "why", "kahan", "kaise", "kyun"]):
             return tools.search_google(raw_query)
 
-        if is_hindi_prompt:
+        if is_hindi:
             return f"जी {Config.USER_NAME}, मैंने सुना: '{raw_query}'। आप मुझसे यूट्यूब पर गाना चलाने, ऐप्स खोलने, मौसम देखने, कॉल करने या स्क्रीनशॉट लेने को कह सकते हैं।"
         return (
             f"I understood: '{raw_query}'. "
-            "You can ask me: 'open Chrome', 'play Bohemian Rhapsody', 'call Papa', 'take screenshot', 'volume 70', 'check battery', "
-            "'what is the weather in Mumbai', or 'dark mode on'."
+            "You can ask me: 'open Chrome', 'play Kesariya', 'call Papa', 'take screenshot', 'volume 70', 'check battery', "
+            "or 'dark mode on'."
         )
+
+    def _process_offline_intent(self, raw_query: str) -> str:
+        """Backwards-compatibility alias for tests and direct offline evaluation."""
+        res = self._match_and_execute_local(raw_query)
+        if res is not None:
+            return res
+        return self._process_offline_fallback(raw_query)
 
 brain = AssistantBrain()

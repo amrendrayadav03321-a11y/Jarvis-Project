@@ -109,10 +109,13 @@ class Speaker:
                 )
                 await communicate.save(str(temp_file))
                 
-            asyncio.run(generate_audio())
+            async def run_with_timeout():
+                await asyncio.wait_for(generate_audio(), timeout=1.8)
+
+            asyncio.run(run_with_timeout())
             
             if temp_file.exists() and temp_file.stat().st_size > 0:
-                subprocess.run(["afplay", str(temp_file)], check=True)
+                subprocess.run(["afplay", str(temp_file)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 temp_file.unlink(missing_ok=True)
                 return True
             return False

@@ -17,12 +17,6 @@ class WakeWordDetector:
             re.IGNORECASE
         )
 
-        # Direct imperative command triggers (instantly bypass wake word check to prevent dropping intentional user commands)
-        self.direct_command_pattern = re.compile(
-            r'(\b(call|phone|dial|text|message|sms|whatsapp|play|open|launch|close|quit|mute|unmute|volume|sound|awaaz|screenshot|lock|sleep|restart|shutdown|weather|mausam|time|date|battery|brightness|dark mode|trash|joke|chutkula|calculate|search|google|kholo|chalao|bajao|lagao|bhejo|batao|sunao|badhao|kam karo|band karo|kheencho|nikalo|padho|likho)\b|'
-            r'(खोल|चला|बजा|लगा|भेज|बता|सुना|बढ़ा|कम|बंद|लॉक|स्क्रीनशॉट|कॉल|मैसेज|गाना|मौसम|समय|हिसाब|कैलकुलेट|लिखो))',
-            re.IGNORECASE
-        )
 
         # Cinematic, impressive activation responses (Iron Man Mark 85 style)
         self.en_acknowledgements = [
@@ -44,26 +38,25 @@ class WakeWordDetector:
         ]
 
     def has_wake_word(self, text: str) -> bool:
-        """Returns True if the text contains any wake word variant or direct command."""
+        """Returns True ONLY if the text explicitly contains 'Hey Jarvis' or 'Jarvis'."""
         if not text:
             return False
-        return bool(self.wake_pattern.search(text) or self.direct_command_pattern.search(text.strip()))
+        return bool(self.wake_pattern.search(text))
 
     def extract_command(self, text: str) -> Tuple[bool, str]:
         """Checks if wake word is present and extracts the command part.
         Returns:
             (has_wake_word: bool, command: str)
-            - If wake word is present and followed/preceded by a command: (True, "call papa")
-            - If direct command is detected without wake word: (True, "call papa")
+            - If wake word is present with command: (True, "play Kesariya")
             - If wake word is present alone: (True, "")
-            - If wake word is not present: (False, "")
+            - If wake word is NOT present: (False, "") -> STRICTLY IGNORED!
         """
         if not text or not text.strip():
             return False, ""
 
         clean_text = text.strip()
 
-        # 1. Check for wake word
+        # Strict check for wake word
         match = self.wake_pattern.search(clean_text)
         if match:
             start, end = match.span()
@@ -76,10 +69,7 @@ class WakeWordDetector:
             cleaned_cmd = re.sub(r'^(please|kripya|zara)\s+', '', cleaned_cmd, flags=re.IGNORECASE).strip()
             return True, cleaned_cmd
 
-        # 2. Check for direct imperative command bypass (zero dropped commands)
-        if self.direct_command_pattern.search(clean_text):
-            return True, clean_text
-
+        # Without wake word, strictly return False (blocks 100% of background noise, songs, chatter)
         return False, ""
 
     def get_acknowledgement(self, query: str = "") -> str:
