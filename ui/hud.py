@@ -48,6 +48,7 @@ JARVIS_HEADER = r"""
 ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║███████║
  ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝
     [ STARK INDUSTRIES - MARK 85 AI ASSISTANT ]
+    [ DESIGN AND BUILT BY SATYAA YADAV ]
 """
 
 class JarvisHUD:

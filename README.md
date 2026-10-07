@@ -1,9 +1,12 @@
 # ⚡ J.A.R.V.I.S. // Stark Industries Tactical OS (macOS Edition)
 
+> 🚀 **Design and built by Satyaa Yadav**
+
+[![Author](https://img.shields.io/badge/Design%20%26%20Built%20By-Satyaa%20Yadav-ff0055?style=for-the-badge&logo=apple)](https://github.com/amrendrayadav03321-a11y/Jarvis-Project)
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue?logo=python&logoColor=white)](https://python.org)
 [![macOS](https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&logoColor=white)](https://apple.com)
 [![Gemini](https://img.shields.io/badge/AI-Google%20Gemini%20Flash-4285F4?logo=google&logoColor=white)](https://aistudio.google.com)
-[![UI](https://img.shields.io/badge/HUD-Holographic%20Canvas%20GUI-00f0ff)](https://github.com)
+[![UI](https://img.shields.io/badge/HUD-Holographic%20Canvas%20GUI-00f0ff)](https://github.com/amrendrayadav03321-a11y/Jarvis-Project)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 An ultra-advanced, intelligent desktop AI voice assistant built natively for **macOS (Apple Silicon & Intel)**. Powered by a **Dual-Engine Brain (Google Gemini Flash with Real-Time Function Calling + Offline Multi-Lingual NLP)** and presented with a futuristic **Iron Man Mark 85 Holographic Tactical HUD**.
@@ -18,6 +21,7 @@ An ultra-advanced, intelligent desktop AI voice assistant built natively for **m
 ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║███████║
  ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝
     [ STARK INDUSTRIES - MARK 85 AI ASSISTANT ]
+    [ DESIGN AND BUILT BY SATYAA YADAV ]
 ```
 
 ---
@@ -147,5 +151,14 @@ Jarvis/
 
 ---
 
+## 👨‍💻 Author & Creator
+
+> 🚀 **Design and built by Satyaa Yadav**
+- **Creator**: **Satyaa Yadav**
+- **Repository**: [amrendrayadav03321-a11y/Jarvis-Project](https://github.com/amrendrayadav03321-a11y/Jarvis-Project)
+- **Architecture**: Native macOS Voice Assistant with Dual-Engine Intelligence & Stark HUD
+
+---
+
 ## 📜 License
-Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more details.
+Distributed under the **MIT License**. Copyright (c) 2026 **Satyaa Yadav**. See [`LICENSE`](LICENSE) for more details.
