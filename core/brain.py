@@ -240,9 +240,20 @@ class AssistantBrain:
             c_num = save_match.group(2).strip()
             return tools.add_contact(c_name, c_num)
 
+        # 0. Presentation & Call Mode Toggle
+        if any(w in q for w in ["presentation mode on", "call mode on", "demo mode on", "conference mode on", "presentation mode chalu"]):
+            from core.listener import listener
+            listener.set_presentation_mode(True)
+            return f"Presentation Mode activated, {Config.USER_NAME}. Acoustic filters are armed for conference calls."
+
+        if any(w in q for w in ["presentation mode off", "call mode off", "demo mode off", "exit presentation mode", "normal mode"]):
+            from core.listener import listener
+            listener.set_presentation_mode(False)
+            return f"Presentation Mode deactivated, {Config.USER_NAME}. Standard acoustic mode restored."
+
         # 2. Weather
         if re.search(r'\b(weather|mausam|temperature|rain|barish)\b', q):
-            city_match = re.search(r'(?:in|for|of|at)\s+([a-zA-Z\s]+)', q)
+            city_match = re.search(r'\b(?:in|for|of)\s+([a-zA-Z\s]+)', q)
             city = city_match.group(1).strip() if city_match else None
             return tools.get_weather(city)
 

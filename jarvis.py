@@ -205,6 +205,20 @@ def main():
                 speaker.speak(msg)
                 continue
 
+            # Presentation / Conference Call Mode Toggle
+            if any(w in user_query.lower() for w in ["presentation mode on", "call mode on", "demo mode on", "conference mode on"]):
+                listener.set_presentation_mode(True)
+                msg = f"Presentation Mode activated, {Config.USER_NAME}. Acoustic sensors locked for conference calls with audience filtering."
+                hud.print_jarvis(msg)
+                speaker.speak(msg)
+                continue
+            elif any(w in user_query.lower() for w in ["presentation mode off", "call mode off", "demo mode off", "exit presentation mode"]):
+                listener.set_presentation_mode(False)
+                msg = f"Presentation Mode deactivated, {Config.USER_NAME}. Standard acoustic mode restored."
+                hud.print_jarvis(msg)
+                speaker.speak(msg)
+                continue
+
             # Switch mode commands
             if user_query.lower() in ["switch to text", "text mode", "type mode"]:
                 mode = "text"

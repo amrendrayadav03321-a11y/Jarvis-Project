@@ -215,6 +215,34 @@ body {
     box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
 }
 
+.status-pres {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.status-pres:hover {
+    background: rgba(0, 240, 255, 0.15);
+    border-color: var(--primary-cyan);
+    color: var(--primary-cyan);
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+.status-pres.active {
+    background: rgba(0, 255, 136, 0.18);
+    border-color: #00ff88;
+    color: #00ff88;
+    box-shadow: 0 0 14px rgba(0, 255, 136, 0.45);
+    animation: presPulse 2s infinite ease-in-out;
+}
+
+@keyframes presPulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(0, 255, 136, 0.3); }
+    50% { box-shadow: 0 0 18px rgba(0, 255, 136, 0.7); }
+}
+
 /* ==========================================================================
    TACTICAL MAIN GRID
    ========================================================================== */

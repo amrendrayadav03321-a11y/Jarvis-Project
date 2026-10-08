@@ -41,10 +41,11 @@ class Config:
     # Microphone & Acoustic Settings
     SPEECH_LANG = os.getenv("SPEECH_LANG", "en-IN")
     MIC_DEVICE_INDEX = os.getenv("MIC_DEVICE_INDEX", "")  # Empty for auto-detection
-    MIC_ENERGY_THRESHOLD = int(os.getenv("MIC_ENERGY_THRESHOLD", "150"))
-    MIC_TIMEOUT = int(os.getenv("MIC_TIMEOUT", "8"))
-    MIC_PHRASE_LIMIT = int(os.getenv("MIC_PHRASE_LIMIT", "12"))
+    MIC_ENERGY_THRESHOLD = int(os.getenv("MIC_ENERGY_THRESHOLD", "130"))
+    MIC_TIMEOUT = int(os.getenv("MIC_TIMEOUT", "4"))
+    MIC_PHRASE_LIMIT = int(os.getenv("MIC_PHRASE_LIMIT", "8"))
     AUDIO_CHIMES = os.getenv("AUDIO_CHIMES", "true").lower() in ["true", "1", "yes"]
+    PRESENTATION_MODE = os.getenv("PRESENTATION_MODE", "false").lower() in ["true", "1", "yes"]
     
     # UI / Animation
     SHOW_BOOT_ANIMATION = os.getenv("SHOW_BOOT_ANIMATION", "true").lower() in ["true", "1", "yes"]

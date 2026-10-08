@@ -283,6 +283,43 @@ function initEventListeners() {
     micBtn.addEventListener('click', () => {
         triggerManualMic();
     });
+
+    // Spacebar Push-To-Talk: Ideal for presentations on Zoom/Meet/Teams
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && document.activeElement !== input) {
+            e.preventDefault();
+            triggerManualMic();
+        }
+    });
+}
+
+function togglePresentationMode() {
+    fetch('/api/presentation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+    })
+    .then(res => res.json())
+    .then(data => {
+        updatePresentationButton(data.presentation_mode);
+        const note = data.presentation_mode 
+            ? '🎯 PRESENTATION SHIELD ENGAGED // Conference call audio filtered. Spacebar Push-To-Talk armed.' 
+            : '🎯 PRESENTATION SHIELD DISENGAGED // Standard acoustic mode restored.';
+        appendMessage('SYSTEM', note);
+    })
+    .catch(() => {});
+}
+
+function updatePresentationButton(isActive) {
+    const btn = document.getElementById('pres-mode-btn');
+    if (!btn) return;
+    if (isActive) {
+        btn.classList.add('active');
+        btn.textContent = '🎯 PRESENTATION MODE: ACTIVE';
+    } else {
+        btn.classList.remove('active');
+        btn.textContent = '🎯 CALL / PRESENTATION MODE: OFF';
+    }
 }
 
 function submitCommand() {
@@ -441,6 +478,11 @@ function fetchTelemetry() {
             const netPill = document.getElementById('network-pill');
             if (netPill && data.network_url) {
                 netPill.textContent = `📱 WIFI: ${data.network_url}`;
+            }
+
+            // Sync Presentation Mode
+            if (typeof data.presentation_mode !== 'undefined') {
+                updatePresentationButton(data.presentation_mode);
             }
 
             // Voice state sync if provided

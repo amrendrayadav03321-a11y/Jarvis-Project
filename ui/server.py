@@ -54,9 +54,24 @@ class JarvisServer:
         self.app.router.add_get("/", self.handle_index)
         self.app.router.add_get("/api/status", self.handle_status)
         self.app.router.add_get("/api/history", self.handle_history)
+        self.app.router.add_get("/api/presentation", self.handle_get_presentation)
+        self.app.router.add_post("/api/presentation", self.handle_toggle_presentation)
         self.app.router.add_post("/api/command", self.handle_command)
         self.app.router.add_post("/api/listen", self.handle_manual_listen)
         self.app.router.add_static("/", path=str(WEB_DIR), name="static")
+
+    async def handle_get_presentation(self, request):
+        return web.json_response({"presentation_mode": listener.presentation_mode})
+
+    async def handle_toggle_presentation(self, request):
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+        target = data.get("enabled", not listener.presentation_mode)
+        listener.set_presentation_mode(bool(target))
+        Config.PRESENTATION_MODE = bool(target)
+        return web.json_response({"presentation_mode": listener.presentation_mode})
 
     async def handle_index(self, request):
         return web.FileResponse(WEB_DIR / "index.html")
@@ -86,6 +101,7 @@ class JarvisServer:
             "disk_free_gb": round(disk.free / (1024**3), 1),
             "voice_state": self.voice_state,
             "wake_word_shield": Config.WAKE_WORD_REQUIRED,
+            "presentation_mode": getattr(listener, "presentation_mode", False),
             "local_ip": self.local_ip,
             "port": self.port,
             "network_url": f"http://{self.local_ip}:{self.port}"
@@ -125,11 +141,15 @@ class JarvisServer:
             self.voice_state = "standby"
 
     async def handle_manual_listen(self, request):
-        """Allows clicking the microphone button on the UI to capture speech."""
-        self.voice_state = "listening"
+        """Allows clicking the microphone button or pressing Push-To-Talk hotkey to capture speech."""
+        self.voice_state = "manual_listening"
         loop = asyncio.get_event_loop()
         
-        raw_audio = await loop.run_in_executor(None, listener.listen)
+        try:
+            raw_audio = await loop.run_in_executor(None, lambda: listener.listen(timeout=5, phrase_time_limit=8))
+        except Exception:
+            raw_audio = ""
+
         if not raw_audio:
             self.voice_state = "standby"
             return web.json_response({"command": "", "response": ""})
@@ -161,13 +181,13 @@ class JarvisServer:
             listener.calibrate()
             
             while self.running:
-                if self.voice_state == "speaking":
-                    time.sleep(0.3)
+                if self.voice_state in ["speaking", "processing", "manual_listening"]:
+                    time.sleep(0.2)
                     continue
 
                 if Config.WAKE_WORD_REQUIRED:
                     self.voice_state = "standby"
-                    raw_audio = listener.listen()
+                    raw_audio = listener.listen(timeout=3.5, phrase_time_limit=8)
                     if not raw_audio:
                         time.sleep(0.1)
                         continue
@@ -188,7 +208,7 @@ class JarvisServer:
                         speaker.speak(ack)
 
                         self.voice_state = "listening"
-                        followup = listener.listen()
+                        followup = listener.listen(timeout=5, phrase_time_limit=8)
                         if not followup:
                             self.voice_state = "standby"
                             continue

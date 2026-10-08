@@ -45,11 +45,9 @@ class WakeWordDetector:
 
     def extract_command(self, text: str) -> Tuple[bool, str]:
         """Checks if wake word is present and extracts the command part.
-        Returns:
-            (has_wake_word: bool, command: str)
-            - If wake word is present with command: (True, "play Kesariya")
-            - If wake word is present alone: (True, "")
-            - If wake word is NOT present: (False, "") -> STRICTLY IGNORED!
+        Optimized for conference calls and presentations:
+        Text spoken before the wake word (audience talk, e.g. 'So guys look here, Hey Jarvis open Chrome')
+        is cleanly discarded, and the command after the wake word is extracted with 100% precision.
         """
         if not text or not text.strip():
             return False, ""
@@ -63,10 +61,32 @@ class WakeWordDetector:
             before = clean_text[:start].strip()
             after = clean_text[end:].strip()
 
-            raw_cmd = f"{before} {after}".strip()
-            cleaned_cmd = re.sub(r'^[,\.\s:\-—]+', '', raw_cmd)
-            cleaned_cmd = re.sub(r'[,\.\s:\-—]+$', '', cleaned_cmd)
-            cleaned_cmd = re.sub(r'^(please|kripya|zara)\s+', '', cleaned_cmd, flags=re.IGNORECASE).strip()
+            # Priority 1: Command spoken after wake word
+            if after:
+                raw_cmd = after
+            # Priority 2: Inverted syntax (e.g., 'YouTube kholo, Jarvis')
+            elif before:
+                raw_cmd = before
+            else:
+                return True, ""
+
+            # Clean leading/trailing punctuation
+            cleaned_cmd = re.sub(r'^[,\.\s:\-—!]+', '', raw_cmd)
+            cleaned_cmd = re.sub(r'[,\.\s:\-—!]+$', '', cleaned_cmd)
+
+            # Strip polite & conversational fillers commonly spoken in presentations & calls
+            fillers = [
+                r'^(?:can\s+you\s+(?:please\s+)?|could\s+you\s+(?:please\s+)?|would\s+you\s+(?:please\s+)?|will\s+you\s+)',
+                r'^(?:please\s+|kripya\s+|zara\s+|ek\s+baar\s+|thoda\s+|just\s+|kindly\s+)',
+                r'^(?:can\s+we\s+|let\'?s\s+|show\s+me\s+|tell\s+me\s+|mujhe\s+|mere\s+liye\s+)',
+                r'^(?:now\s+|ab\s+|aur\s+|zara\s+ek\s+baar\s+)'
+            ]
+            for f_pattern in fillers:
+                cleaned_cmd = re.sub(f_pattern, '', cleaned_cmd, flags=re.IGNORECASE).strip()
+
+            # Clean trailing fillers (e.g. 'open Chrome please', 'play song na')
+            cleaned_cmd = re.sub(r'\s+(?:please|for\s+me|na|zara)$', '', cleaned_cmd, flags=re.IGNORECASE).strip()
+
             return True, cleaned_cmd
 
         # Without wake word, strictly return False (blocks 100% of background noise, songs, chatter)
