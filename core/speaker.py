@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import asyncio
 import subprocess
 import tempfile
@@ -46,8 +47,53 @@ class Speaker:
             
         return False, "english"
 
+    def _play_audio_file(self, file_path: Path) -> bool:
+        """Plays an audio file cross-platform on macOS, Windows, and Linux."""
+        if sys.platform == "darwin":
+            try:
+                subprocess.run(
+                    ["afplay", str(file_path)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=True
+                )
+                return True
+            except Exception:
+                return False
+        elif sys.platform == "win32":
+            try:
+                # Use Windows Media Player COM object via PowerShell (native on Windows 10/11)
+                safe_path = str(file_path).replace("'", "''")
+                ps_script = (
+                    f"$w = New-Object -ComObject WMPlayer.OCX; "
+                    f"$w.settings.volume = 100; "
+                    f"$w.URL = '{safe_path}'; "
+                    f"$w.controls.play(); "
+                    f"Start-Sleep -Milliseconds 100; "
+                    f"while ($w.playState -eq 3 -or $w.playState -eq 9 -or $w.playState -eq 0 -or $w.playState -eq 6) {{ "
+                    f"    Start-Sleep -Milliseconds 50; "
+                    f"}}"
+                )
+                subprocess.run(
+                    ["powershell", "-NoProfile", "-Command", ps_script],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=True
+                )
+                return True
+            except Exception:
+                return False
+        else:
+            for player in [["mpv", str(file_path)], ["ffplay", "-nodisp", "-autoexit", str(file_path)], ["aplay", str(file_path)]]:
+                try:
+                    subprocess.run(player, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+                    return True
+                except Exception:
+                    continue
+            return False
+
     def speak(self, text: str) -> None:
-        """Speaks the text using either Edge TTS or macOS say with deep male voice."""
+        """Speaks the text using Edge Neural TTS or OS native speech fallback."""
         if not text or not text.strip():
             return
             
@@ -68,8 +114,16 @@ class Speaker:
             if success:
                 return
 
-        # Fallback or default to macOS say (with tuned deep pacing)
-        self._speak_macos(clean_text, macos_voice)
+        # Fallback to platform-native offline TTS
+        if sys.platform == "win32":
+            self._speak_windows(clean_text)
+        elif sys.platform == "darwin":
+            self._speak_macos(clean_text, macos_voice)
+        else:
+            try:
+                subprocess.run(["espeak", clean_text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
 
     def _speak_macos(self, text: str, voice: str) -> bool:
         """Uses macOS native say command with chosen male voice and deep cadence."""
@@ -94,6 +148,26 @@ class Speaker:
             except Exception:
                 return False
 
+    def _speak_windows(self, text: str) -> bool:
+        """Uses Windows native SAPI SpeechSynthesizer via PowerShell with zero external dependencies."""
+        try:
+            escaped = text.replace("'", "''").replace('"', '`"')
+            ps_script = (
+                "Add-Type -AssemblyName System.Speech; "
+                "$synth = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+                "$synth.Rate = 0; "
+                f"$synth.Speak('{escaped}');"
+            )
+            subprocess.run(
+                ["powershell", "-NoProfile", "-Command", ps_script],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=True
+            )
+            return True
+        except Exception:
+            return False
+
     def _speak_edge(self, text: str, voice: str) -> bool:
         """Uses Microsoft Edge Neural TTS with customized pitch for deep male voice."""
         try:
@@ -115,7 +189,7 @@ class Speaker:
             asyncio.run(run_with_timeout())
             
             if temp_file.exists() and temp_file.stat().st_size > 0:
-                subprocess.run(["afplay", str(temp_file)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                self._play_audio_file(temp_file)
                 temp_file.unlink(missing_ok=True)
                 return True
             return False

@@ -41,7 +41,7 @@ class Listener:
             self.recognizer.energy_threshold = 140
 
     def _determine_device_index(self) -> int:
-        """Finds the best hardware microphone device index on macOS."""
+        """Finds the best hardware microphone device index across macOS and Windows."""
         if Config.MIC_DEVICE_INDEX and str(Config.MIC_DEVICE_INDEX).strip().isdigit():
             return int(Config.MIC_DEVICE_INDEX)
 
@@ -51,32 +51,42 @@ class Listener:
         builtin_index = None
         
         try:
+            # 1. Try system default input device first
+            default_idx = None
+            try:
+                default_info = p.get_default_input_device_info()
+                default_idx = default_info.get("index")
+            except Exception:
+                default_idx = None
+
             device_count = p.get_device_count()
             for i in range(device_count):
                 dev_info = p.get_device_info_by_index(i)
-                name = dev_info.get("name", "")
+                name = dev_info.get("name", "").lower()
                 max_inputs = dev_info.get("maxInputChannels", 0)
                 
                 if max_inputs > 0:
-                    # Prefer Built-in / MacBook Air Microphone array
-                    if any(k in name.lower() for k in ["macbook", "built-in", "internal microphone"]):
+                    # Windows & macOS built-in mic keywords
+                    if any(k in name for k in ["macbook", "built-in", "internal microphone", "microphone array", "realtek", "high definition audio"]):
                         builtin_index = i
                         break
                     elif best_index is None:
                         best_index = i
                         
-            try:
-                default_info = p.get_default_input_device_info()
-                default_idx = default_info.get("index")
-            except Exception:
-                default_idx = 0
-                
-            selected = builtin_index if builtin_index is not None else (best_index if best_index is not None else default_idx)
-            return selected
+            if default_idx is not None:
+                return default_idx
+            if builtin_index is not None:
+                return builtin_index
+            if best_index is not None:
+                return best_index
+            return 0
         except Exception:
             return 0
         finally:
-            p.terminate()
+            try:
+                p.terminate()
+            except Exception:
+                pass
 
     def calibrate(self):
         """Calibrates microphone with high-sensitivity floor and safety clamps."""

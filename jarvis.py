@@ -57,7 +57,7 @@ def run_tests():
     console.print("\n[bold green]✓ All self-tests passed successfully![/bold green]\n")
 
 def main():
-    parser = argparse.ArgumentParser(description="Jarvis AI Voice Assistant for macOS (Stark Industries Edition)")
+    parser = argparse.ArgumentParser(description="Jarvis AI Voice Assistant (Stark Industries Edition - Cross-Platform Windows & macOS)")
     parser.add_argument("--ui", action="store_true", help="Launch Iron Man Holographic Graphical UI Window (Default)")
     parser.add_argument("--cli", action="store_true", help="Run in terminal CLI mode")
     parser.add_argument("--text", action="store_true", help="Run in keyboard/text input mode")

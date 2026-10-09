@@ -1,4 +1,6 @@
 import time
+import sys
+import platform
 import subprocess
 from rich.console import Console
 from rich.panel import Panel
@@ -56,7 +58,14 @@ class JarvisHUD:
     def play_boot_sound():
         """Plays triumphant power-up sound."""
         try:
-            subprocess.Popen(["afplay", "/System/Library/Sounds/Hero.aiff"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if sys.platform == "darwin":
+                subprocess.Popen(["afplay", "/System/Library/Sounds/Hero.aiff"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            elif sys.platform == "win32":
+                try:
+                    import winsound
+                    winsound.MessageBeep(winsound.MB_ICONASTERISK)
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -71,8 +80,9 @@ class JarvisHUD:
         # Audio power-up
         JarvisHUD.play_boot_sound()
         
-        # Typewriter intro
-        intro = Text("STARK INDUSTRIES PROTOCOL INITIALIZATION...\nSYSTEM: MARK LXXXV OS (v9.4-APPLE_SILICON)", style="bold bright_cyan")
+        # Dynamic OS intro
+        os_platform = "WINDOWS 11/10" if sys.platform == "win32" else ("APPLE-SILICON" if sys.platform == "darwin" else "LINUX")
+        intro = Text(f"STARK INDUSTRIES PROTOCOL INITIALIZATION...\nSYSTEM: MARK LXXXV OS (v9.4-{os_platform})", style="bold bright_cyan")
         console.print(intro)
         time.sleep(0.3)
         
@@ -92,9 +102,10 @@ class JarvisHUD:
             console=console,
             transient=True
         ) as progress:
+            os_subsystem = "Windows" if sys.platform == "win32" else ("macOS" if sys.platform == "darwin" else "Linux")
             t1 = progress.add_task("[cyan]Booting Neural Language Core...", total=100)
             t2 = progress.add_task("[yellow]Calibrating Acoustic Sensors & Mic...", total=100)
-            t3 = progress.add_task("[bright_blue]Linking macOS Automation Subsystems...", total=100)
+            t3 = progress.add_task(f"[bright_blue]Linking {os_subsystem} Automation Subsystems...", total=100)
 
             while not progress.finished:
                 progress.update(t1, advance=25)
@@ -116,7 +127,9 @@ class JarvisHUD:
         table.add_column("Telemetry", style="bold yellow", width=22)
         table.add_column("Diagnostics", style="bold white")
         
-        table.add_row("⚡ REACTOR CORE", "[bold green]100% OPTIMAL (ARM64 HIGH-PERFORMANCE)[/bold green]")
+        arch = platform.machine().upper()
+        os_label = "WINDOWS 11/10" if sys.platform == "win32" else ("macOS ARM64" if sys.platform == "darwin" else "LINUX")
+        table.add_row("⚡ REACTOR CORE", f"[bold green]100% OPTIMAL ({arch} - {os_label})[/bold green]")
         table.add_row("🤖 ASSISTANT", f"[bold bright_cyan]{Config.ASSISTANT_NAME}[/bold bright_cyan] (Voice of Stark Industries)")
         table.add_row("👤 PROTOCOL USER", f"[bold bright_white]{Config.USER_NAME}[/bold bright_white]")
         table.add_row("🛡️ NOISE FILTER SHIELD", "[bold green]ACTIVE (Ignoring background music/songs until 'Hey Jarvis')[/bold green]" if Config.WAKE_WORD_REQUIRED else "[yellow]OFF (Continuous Listening)[/yellow]")

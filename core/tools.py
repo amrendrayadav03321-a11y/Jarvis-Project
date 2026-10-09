@@ -1,9 +1,11 @@
 import os
+import sys
 import re
 import random
 import datetime
 import subprocess
 import urllib.parse
+import webbrowser
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import requests
@@ -11,8 +13,24 @@ import psutil
 
 from core.config import Config, NOTES_DIR, SCREENSHOTS_DIR
 
+IS_WINDOWS = sys.platform == "win32"
+IS_MACOS = sys.platform == "darwin"
+IS_LINUX = sys.platform.startswith("linux")
+
+def open_url_or_file(target: str):
+    """Universal cross-platform launcher for URLs, apps, or paths."""
+    try:
+        if IS_MACOS:
+            subprocess.run(["open", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        elif IS_WINDOWS:
+            os.startfile(target)
+        else:
+            subprocess.run(["xdg-open", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        webbrowser.open(target)
+
 class SystemTools:
-    """Core tool executor for Jarvis Assistant on macOS."""
+    """Core tool executor for Jarvis Assistant (macOS, Windows & Linux)."""
 
     @staticmethod
     def get_time_and_date() -> str:
@@ -24,33 +42,40 @@ class SystemTools:
 
     @staticmethod
     def get_battery_status() -> str:
-        """Checks macOS battery level and charging status."""
+        """Checks battery level and charging status (cross-platform: macOS, Windows, Linux)."""
         try:
-            res = subprocess.run(["pmset", "-g", "batt"], capture_output=True, text=True)
-            output = res.stdout
-            # Example output: -InternalBattery-0 (id=23461987)	64%; charging; 2:09 remaining
-            match = re.search(r'(\d+)%;\s*([^;]+)', output)
-            if match:
-                percentage = match.group(1)
-                state = match.group(2).strip()
+            battery = psutil.sensors_battery()
+            if battery is not None:
+                percentage = int(battery.percent)
+                state = "charging" if battery.power_plugged else "discharging"
                 return f"Battery is at {percentage} percent and currently {state}."
-            return "Unable to determine precise battery details."
+            
+            # Fallback for macOS if psutil returned None
+            if IS_MACOS:
+                res = subprocess.run(["pmset", "-g", "batt"], capture_output=True, text=True)
+                match = re.search(r'(\d+)%;\s*([^;]+)', res.stdout)
+                if match:
+                    return f"Battery is at {match.group(1)} percent and currently {match.group(2).strip()}."
+            
+            return "Running on AC Power supply with no internal battery (Desktop PC), sir."
         except Exception as e:
             return f"Error retrieving battery status: {e}"
 
     @staticmethod
     def get_system_stats() -> str:
-        """Returns CPU usage, RAM utilization, and disk space."""
+        """Returns CPU usage, RAM utilization, and disk space across Windows and macOS."""
         try:
-            cpu = psutil.cpu_percent(interval=0.5)
+            cpu = psutil.cpu_percent(interval=0.3)
             ram = psutil.virtual_memory()
-            disk = psutil.disk_usage('/')
+            root_drive = (os.path.splitdrive(os.getcwd())[0] + os.sep) if IS_WINDOWS else '/'
+            disk = psutil.disk_usage(root_drive)
             
             ram_free_gb = round(ram.available / (1024 ** 3), 1)
             disk_free_gb = round(disk.free / (1024 ** 3), 1)
+            os_label = "Windows" if IS_WINDOWS else ("macOS" if IS_MACOS else "Linux")
             
             return (
-                f"System Health: CPU utilization is at {cpu} percent. "
+                f"System Health ({os_label}): CPU utilization is at {cpu} percent. "
                 f"RAM usage is {ram.percent} percent with {ram_free_gb} Gigabytes available. "
                 f"Disk has {disk_free_gb} Gigabytes of free storage."
             )
@@ -59,113 +84,166 @@ class SystemTools:
 
     @staticmethod
     def set_volume(level: int) -> str:
-        """Sets macOS system volume (0-100)."""
+        """Sets system volume (0-100) on macOS and Windows."""
         try:
             level = max(0, min(100, int(level)))
-            subprocess.run(["osascript", "-e", f"set volume output volume {level}"], check=True)
-            return f"Volume set to {level} percent."
+            if IS_MACOS:
+                subprocess.run(["osascript", "-e", f"set volume output volume {level}"], check=True)
+            elif IS_WINDOWS:
+                # Windows volume adjustment
+                ps_script = f"$w = New-Object -ComObject WScript.Shell; 1..50 | ForEach-Object {{ $w.SendKeys([char]174) }}; 1..{level // 2} | ForEach-Object {{ $w.SendKeys([char]175) }}"
+                subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], check=True)
+            return f"Volume set to {level} percent, sir."
         except Exception as e:
             return f"Failed to set volume: {e}"
 
     @staticmethod
     def adjust_volume(change: int) -> str:
-        """Increases or decreases volume by a given delta."""
+        """Increases or decreases volume by a given delta across macOS and Windows."""
         try:
-            res = subprocess.run(["osascript", "-e", "output volume of (get volume settings)"], capture_output=True, text=True)
-            curr = int(res.stdout.strip())
-            new_vol = max(0, min(100, curr + change))
-            subprocess.run(["osascript", "-e", f"set volume output volume {new_vol}"], check=True)
             direction = "increased" if change > 0 else "decreased"
-            return f"Volume {direction} to {new_vol} percent."
+            if IS_MACOS:
+                res = subprocess.run(["osascript", "-e", "output volume of (get volume settings)"], capture_output=True, text=True)
+                curr = int(res.stdout.strip())
+                new_vol = max(0, min(100, curr + change))
+                subprocess.run(["osascript", "-e", f"set volume output volume {new_vol}"], check=True)
+                return f"Volume {direction} to {new_vol} percent, sir."
+            elif IS_WINDOWS:
+                key_code = 175 if change > 0 else 174
+                steps = max(1, abs(change) // 4)
+                ps_script = f"$w = New-Object -ComObject WScript.Shell; 1..{steps} | ForEach-Object {{ $w.SendKeys([char]{key_code}) }}"
+                subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], check=True)
+                return f"Volume {direction}, sir."
+            return f"Adjusted volume {direction}, sir."
         except Exception as e:
             return f"Failed to adjust volume: {e}"
 
     @staticmethod
     def mute_volume(mute: bool = True) -> str:
-        """Mutes or unmutes system audio."""
+        """Mutes or unmutes system audio across macOS and Windows."""
         try:
-            state = "true" if mute else "false"
-            subprocess.run(["osascript", "-e", f"set volume output muted {state}"], check=True)
+            if IS_MACOS:
+                state = "true" if mute else "false"
+                subprocess.run(["osascript", "-e", f"set volume output muted {state}"], check=True)
+            elif IS_WINDOWS:
+                # Key 173 is VK_VOLUME_MUTE
+                ps_script = "(New-Object -ComObject WScript.Shell).SendKeys([char]173)"
+                subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], check=True)
             return "Volume muted, sir." if mute else "Audio unmuted, sir."
         except Exception as e:
             return f"Failed to toggle mute: {e}"
 
     @staticmethod
     def lock_screen() -> str:
-        """Locks the Mac screen."""
+        """Locks the screen on macOS and Windows."""
         try:
-            # Modern macOS lock screen command
-            subprocess.run(["pmset", "displaysleepnow"])
+            if IS_MACOS:
+                subprocess.run(["pmset", "displaysleepnow"])
+            elif IS_WINDOWS:
+                subprocess.run(["rundll32.exe", "user32.dll,LockWorkStation"])
+            else:
+                subprocess.run(["xdg-screensaver", "lock"])
             return "Screen locked, sir."
         except Exception as e:
             return f"Failed to lock screen: {e}"
 
     @staticmethod
     def empty_trash() -> str:
-        """Empties macOS trash."""
+        """Empties recycle bin / trash on macOS and Windows."""
         try:
-            subprocess.run(["osascript", "-e", 'tell application "Finder" to empty trash'], check=True)
-            return "Trash has been emptied, sir."
+            if IS_MACOS:
+                subprocess.run(["osascript", "-e", 'tell application "Finder" to empty trash'], check=True)
+            elif IS_WINDOWS:
+                subprocess.run(["powershell", "-NoProfile", "-Command", "Clear-RecycleBin -Force -ErrorAction SilentlyContinue"])
+            return "Recycle bin / trash has been emptied, sir."
         except Exception as e:
             return f"Could not empty trash: {e}"
 
     @staticmethod
     def open_application(app_name: str) -> str:
-        """Searches and opens an application on macOS."""
+        """Searches and opens an application across macOS and Windows."""
         if not app_name:
             return "Please specify an application name."
             
         app_name_clean = app_name.strip().lower()
         
-        # Common aliases mapping
+        # Cross-platform common aliases mapping
         aliases = {
-            "code": "Visual Studio Code",
-            "vs code": "Visual Studio Code",
-            "vscode": "Visual Studio Code",
-            "chrome": "Google Chrome",
-            "brave": "Brave Browser",
-            "browser": "Safari",
-            "settings": "System Settings",
-            "preferences": "System Settings",
-            "terminal": "Terminal",
-            "calc": "Calculator",
-            "files": "Finder"
+            "code": "code" if IS_WINDOWS else "Visual Studio Code",
+            "vs code": "code" if IS_WINDOWS else "Visual Studio Code",
+            "vscode": "code" if IS_WINDOWS else "Visual Studio Code",
+            "chrome": "chrome" if IS_WINDOWS else "Google Chrome",
+            "brave": "brave" if IS_WINDOWS else "Brave Browser",
+            "browser": "msedge" if IS_WINDOWS else "Safari",
+            "edge": "msedge",
+            "settings": "ms-settings:" if IS_WINDOWS else "System Settings",
+            "preferences": "ms-settings:" if IS_WINDOWS else "System Settings",
+            "terminal": "wt" if IS_WINDOWS else "Terminal",
+            "cmd": "cmd",
+            "powershell": "powershell",
+            "calc": "calc" if IS_WINDOWS else "Calculator",
+            "calculator": "calc" if IS_WINDOWS else "Calculator",
+            "files": "explorer" if IS_WINDOWS else "Finder",
+            "explorer": "explorer",
+            "finder": "explorer" if IS_WINDOWS else "Finder",
+            "notepad": "notepad",
+            "task manager": "taskmgr",
+            "spotify": "spotify"
         }
         
         target = aliases.get(app_name_clean, app_name)
         
-        # Try direct open -a
-        try:
-            res = subprocess.run(["open", "-a", target], capture_output=True, text=True)
-            if res.returncode == 0:
-                return f"Opening {target}, sir."
-        except Exception:
-            pass
+        if IS_WINDOWS:
+            # 1. Try launching URI or direct Windows command
+            try:
+                if target.startswith("ms-settings:") or target in ["calc", "notepad", "explorer", "cmd", "wt", "powershell", "taskmgr"]:
+                    os.system(f"start {target}")
+                    return f"Opening {app_name.title()}, sir."
+                ret = subprocess.run(["cmd", "/c", "start", "", target], capture_output=True, shell=True)
+                if ret.returncode == 0:
+                    return f"Opening {app_name.title()}, sir."
+            except Exception:
+                pass
+                
+            # 2. Search Windows Program Files and AppData
+            win_dirs = [
+                os.environ.get("ProgramFiles", "C:\\Program Files"),
+                os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"),
+                os.path.expanduser("~\\AppData\\Local"),
+                os.path.expanduser("~\\AppData\\Roaming")
+            ]
+            for wdir in win_dirs:
+                if os.path.exists(wdir):
+                    for root, dirs, files in os.walk(wdir):
+                        for f in files:
+                            if f.lower().endswith(".exe") and app_name_clean in f.lower():
+                                os.startfile(os.path.join(root, f))
+                                return f"Opening {f[:-4].title()}, sir."
+                        if root.count(os.sep) - wdir.count(os.sep) >= 2:
+                            del dirs[:]
+        else:
+            # macOS launch sequence
+            try:
+                res = subprocess.run(["open", "-a", target], capture_output=True, text=True)
+                if res.returncode == 0:
+                    return f"Opening {target}, sir."
+            except Exception:
+                pass
 
-        # Search across Applications folders
-        search_dirs = ["/Applications", "/System/Applications", "/System/Applications/Utilities", os.path.expanduser("~/Applications")]
-        candidates = []
-        for sdir in search_dirs:
-            if os.path.exists(sdir):
-                try:
-                    for item in os.listdir(sdir):
-                        if item.endswith(".app"):
-                            name = item[:-4]
-                            if app_name_clean == name.lower():
-                                subprocess.run(["open", os.path.join(sdir, item)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                                return f"Opening {name}, sir."
-                            elif app_name_clean in name.lower():
-                                candidates.append((name, os.path.join(sdir, item)))
-                except Exception:
-                    continue
-                            
-        if candidates:
-            # Pick closest candidate
-            best_name, best_path = candidates[0]
-            subprocess.run(["open", best_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            return f"Opening {best_name}, sir."
-            
-        # Fallback to web app if desktop app is not installed
+            search_dirs = ["/Applications", "/System/Applications", "/System/Applications/Utilities", os.path.expanduser("~/Applications")]
+            for sdir in search_dirs:
+                if os.path.exists(sdir):
+                    try:
+                        for item in os.listdir(sdir):
+                            if item.endswith(".app"):
+                                name = item[:-4]
+                                if app_name_clean == name.lower() or app_name_clean in name.lower():
+                                    subprocess.run(["open", os.path.join(sdir, item)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                    return f"Opening {name}, sir."
+                    except Exception:
+                        continue
+
+        # Universal fallback to web application
         web_fallbacks = {
             "spotify": "https://open.spotify.com",
             "chrome": "https://google.com",
@@ -179,24 +257,29 @@ class SystemTools:
             "x": "https://x.com"
         }
         if app_name_clean in web_fallbacks:
-            subprocess.run(["open", web_fallbacks[app_name_clean]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            open_url_or_file(web_fallbacks[app_name_clean])
             return f"Opening {app_name_clean.title()} in your browser, sir."
 
-        return f"Could not locate application '{app_name}' on your Mac."
+        return f"Could not locate application '{app_name}' on your system."
 
     @staticmethod
     def close_application(app_name: str) -> str:
-        """Closes an open application on macOS."""
+        """Closes an open application on macOS or Windows."""
         try:
-            script = f'tell application "{app_name}" to quit'
-            subprocess.run(["osascript", "-e", script], capture_output=True)
-            return f"Closed {app_name}, sir."
+            if IS_WINDOWS:
+                target_exe = app_name if app_name.lower().endswith(".exe") else f"{app_name}.exe"
+                subprocess.run(["taskkill", "/IM", target_exe, "/F"], capture_output=True)
+                return f"Closed {app_name}, sir."
+            else:
+                script = f'tell application "{app_name}" to quit'
+                subprocess.run(["osascript", "-e", script], capture_output=True)
+                return f"Closed {app_name}, sir."
         except Exception as e:
             return f"Could not close {app_name}: {e}"
 
     @staticmethod
     def open_website(url_or_domain: str) -> str:
-        """Opens a website in the default browser."""
+        """Opens a website in the default browser across all operating systems."""
         target = url_or_domain.strip().lower()
         if not target.startswith("http://") and not target.startswith("https://"):
             if "." in target:
@@ -204,47 +287,66 @@ class SystemTools:
             else:
                 target = f"https://www.{target}.com"
                 
-        subprocess.run(["open", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        open_url_or_file(target)
         return f"Opening {target} in your browser, sir."
 
     @staticmethod
     def search_google(query: str) -> str:
-        """Performs a Google search in browser."""
+        """Performs a Google search in browser across all operating systems."""
         encoded = urllib.parse.quote(query)
         url = f"https://www.google.com/search?q={encoded}"
-        subprocess.run(["open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        open_url_or_file(url)
         return f"Searching Google for '{query}', sir."
 
     @staticmethod
     def play_youtube(query: str) -> str:
-        """Searches YouTube and directly plays the top matching video."""
+        """Searches YouTube and directly plays the top matching video across all operating systems."""
         try:
             encoded = urllib.parse.quote(query)
             search_url = f"https://www.youtube.com/results?search_query={encoded}"
-            headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
             
             res = requests.get(search_url, headers=headers, timeout=5)
             if res.status_code == 200:
                 video_ids = re.findall(r'\"videoId\":\"([a-zA-Z0-9_-]{11})\"', res.text)
                 if video_ids:
                     direct_watch_url = f"https://www.youtube.com/watch?v={video_ids[0]}"
-                    subprocess.run(["open", direct_watch_url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    open_url_or_file(direct_watch_url)
                     return f"Playing '{query}' directly on YouTube, sir."
 
             # Fallback to search results
-            subprocess.run(["open", search_url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            open_url_or_file(search_url)
             return f"Playing '{query}' on YouTube, sir."
         except Exception:
             encoded = urllib.parse.quote(query)
-            subprocess.run(["open", f"https://www.youtube.com/results?search_query={encoded}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            open_url_or_file(f"https://www.youtube.com/results?search_query={encoded}")
             return f"Playing '{query}' on YouTube, sir."
 
     @staticmethod
     def control_media(action: str) -> str:
-        """Controls media playback (play, pause, next, previous) on macOS."""
+        """Controls media playback (play, pause, next, previous) on macOS and Windows."""
         action_clean = action.lower().strip()
-        script = ""
         
+        if IS_WINDOWS:
+            try:
+                if "pause" in action_clean or "stop" in action_clean or "play" in action_clean or "resume" in action_clean:
+                    ps_script = "(New-Object -ComObject WScript.Shell).SendKeys([char]179)"
+                    subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], check=True)
+                    return "Toggled media playback, sir."
+                elif "next" in action_clean or "skip" in action_clean:
+                    ps_script = "(New-Object -ComObject WScript.Shell).SendKeys([char]176)"
+                    subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], check=True)
+                    return "Skipped to next track, sir."
+                elif "prev" in action_clean:
+                    ps_script = "(New-Object -ComObject WScript.Shell).SendKeys([char]177)"
+                    subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], check=True)
+                    return "Playing previous track, sir."
+                return f"Unknown media action: {action}"
+            except Exception as e:
+                return f"Could not adjust media playback: {e}"
+
+        # macOS AppleScript media controls
+        script = ""
         if "pause" in action_clean or "stop" in action_clean:
             script = '''
             try
@@ -308,7 +410,6 @@ class SystemTools:
                 title = data.get("title", query)
                 extract = data.get("extract", "")
                 if extract:
-                    # Keep to 2 sentences for concise speech
                     sentences = extract.split(". ")
                     short_summary = ". ".join(sentences[:2]) + "."
                     return f"According to Wikipedia: {short_summary}"
@@ -325,7 +426,7 @@ class SystemTools:
 
     @staticmethod
     def take_screenshot(filename: Optional[str] = None) -> str:
-        """Captures a screenshot and saves it to the screenshots directory."""
+        """Captures a screenshot and saves it to the screenshots directory across Windows and macOS."""
         try:
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             if filename:
@@ -336,20 +437,35 @@ class SystemTools:
             else:
                 file_path = SCREENSHOTS_DIR / f"screenshot_{timestamp}.png"
                 
-            res = subprocess.run(["screencapture", "-x", str(file_path)], capture_output=True, text=True)
-            if res.returncode != 0:
+            # 1. Try cross-platform Pillow if available
+            try:
+                from PIL import ImageGrab
+                img = ImageGrab.grab()
+                img.save(str(file_path))
+                return f"Screenshot captured and saved to {file_path.name}, sir."
+            except Exception:
+                pass
+
+            # 2. Platform native fallback
+            if IS_MACOS:
+                res = subprocess.run(["screencapture", "-x", str(file_path)], capture_output=True, text=True)
+                if res.returncode == 0:
+                    return f"Screenshot captured and saved to {file_path.name}, sir."
                 err = (res.stderr or "").lower()
-                # On macOS, 'could not create image from display' means Screen Recording permission is missing
                 if "could not create image" in err or res.returncode == 1:
-                    # Automatically open Privacy & Security -> Screen Recording
                     subprocess.run(["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"])
-                    return (
-                        "Screen Recording permission is required by macOS. "
-                        "I have opened System Settings for you, Sir. Please toggle 'Terminal' ON, "
-                        "then try the command again."
-                    )
-                return f"Could not capture screenshot: {res.stderr.strip()}"
-                
+                    return "Screen Recording permission required. I have opened System Settings for you, Sir."
+            elif IS_WINDOWS:
+                ps_cmd = (
+                    "Add-Type -AssemblyName System.Windows.Forms,System.Drawing; "
+                    "$b = New-Object Drawing.Bitmap([Windows.Forms.Screen]::PrimaryScreen.Bounds.Width, [Windows.Forms.Screen]::PrimaryScreen.Bounds.Height); "
+                    "$g = [Drawing.Graphics]::FromImage($b); "
+                    "$g.CopyFromScreen((New-Object Drawing.Point(0,0)), (New-Object Drawing.Point(0,0)), $b.Size); "
+                    f"$b.Save('{str(file_path)}')"
+                )
+                subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], check=True)
+                return f"Screenshot captured and saved to {file_path.name}, sir."
+
             return f"Screenshot captured and saved to {file_path.name}, sir."
         except Exception as e:
             return f"Failed to take screenshot: {e}"
@@ -513,26 +629,30 @@ class SystemTools:
 
     @staticmethod
     def toggle_dark_mode(state: Optional[bool] = None) -> str:
-        """Toggles or sets macOS Dark Mode / Light Mode."""
+        """Toggles or sets Dark Mode / Light Mode across macOS and Windows."""
         try:
-            if state is True:
-                script = 'tell application "System Events" to tell appearance preferences to set dark mode to true'
+            if IS_MACOS:
+                if state is True:
+                    script = 'tell application "System Events" to tell appearance preferences to set dark mode to true'
+                elif state is False:
+                    script = 'tell application "System Events" to tell appearance preferences to set dark mode to false'
+                else:
+                    script = 'tell application "System Events" to tell appearance preferences to set dark mode to not dark mode'
                 subprocess.run(["osascript", "-e", script], check=True)
-                return "Dark mode enabled, sir."
-            elif state is False:
-                script = 'tell application "System Events" to tell appearance preferences to set dark mode to false'
-                subprocess.run(["osascript", "-e", script], check=True)
-                return "Light mode enabled, sir."
-            else:
-                script = 'tell application "System Events" to tell appearance preferences to set dark mode to not dark mode'
-                subprocess.run(["osascript", "-e", script], check=True)
-                return "Toggled system appearance mode, sir."
+                return "Toggled system dark mode, sir."
+            elif IS_WINDOWS:
+                val = 0 if state is True else (1 if state is False else 0)
+                ps_script = f"Set-ItemProperty -Path HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize -Name AppsUseLightTheme -Value {val} -Type DWord -Force -ErrorAction SilentlyContinue"
+                subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], check=True)
+                mode_str = "Dark" if val == 0 else "Light"
+                return f"{mode_str} mode applied on Windows, sir."
+            return "Appearance mode toggled, sir."
         except Exception as e:
             return f"Failed to toggle dark mode: {e}"
 
     @staticmethod
     def open_folder(folder_name: str) -> str:
-        """Opens user folders (Downloads, Documents, Desktop, etc.) in Finder."""
+        """Opens user folders (Downloads, Documents, Desktop, etc.) across macOS and Windows."""
         target = folder_name.lower().strip()
         home = Path.home()
         mapping = {
@@ -542,11 +662,13 @@ class SystemTools:
             "pictures": home / "Pictures",
             "photos": home / "Pictures",
             "music": home / "Music",
-            "movies": home / "Movies",
-            "videos": home / "Movies",
-            "applications": Path("/Applications"),
+            "movies": home / "Videos" if IS_WINDOWS else home / "Movies",
+            "videos": home / "Videos" if IS_WINDOWS else home / "Movies",
             "home": home
         }
+        if not IS_WINDOWS:
+            mapping["applications"] = Path("/Applications")
+            
         path = mapping.get(target)
         if not path:
             for k, p in mapping.items():
@@ -557,25 +679,34 @@ class SystemTools:
             path = home / folder_name.strip()
             
         if path.exists():
-            subprocess.run(["open", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            return f"Opening {path.name} folder in Finder, sir."
-        return f"Could not find folder '{folder_name}' on your Mac."
+            open_url_or_file(str(path))
+            return f"Opening {path.name} folder, sir."
+        return f"Could not find folder '{folder_name}' on your system."
 
     @staticmethod
     def copy_to_clipboard(text: str) -> str:
-        """Copies text to macOS clipboard."""
+        """Copies text to system clipboard on macOS and Windows."""
         try:
-            subprocess.run(["pbcopy"], input=text.encode("utf-8"), check=True)
+            if IS_MACOS:
+                subprocess.run(["pbcopy"], input=text.encode("utf-8"), check=True)
+            elif IS_WINDOWS:
+                subprocess.run(["clip"], input=text.encode("utf-8"), check=True, shell=True)
             return "Copied to your clipboard, sir."
         except Exception as e:
             return f"Failed to copy to clipboard: {e}"
 
     @staticmethod
     def read_clipboard() -> str:
-        """Reads content from macOS clipboard."""
+        """Reads content from system clipboard on macOS and Windows."""
         try:
-            res = subprocess.run(["pbpaste"], capture_output=True, text=True)
-            content = res.stdout.strip()
+            if IS_MACOS:
+                res = subprocess.run(["pbpaste"], capture_output=True, text=True)
+                content = res.stdout.strip()
+            elif IS_WINDOWS:
+                res = subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Clipboard"], capture_output=True, text=True)
+                content = res.stdout.strip()
+            else:
+                content = ""
             if not content:
                 return "Your clipboard is currently empty, sir."
             return f"Clipboard contents: {content[:300]}"
@@ -601,74 +732,116 @@ class SystemTools:
 
     @staticmethod
     def find_files(filename_query: str) -> str:
-        """Uses macOS Spotlight to search for files instantly."""
+        """Searches for files instantly across macOS (Spotlight) and Windows."""
         try:
             clean_q = filename_query.strip().replace('"', '')
-            res = subprocess.run(["mdfind", "-name", clean_q], capture_output=True, text=True, timeout=5)
-            lines = [l.strip() for l in res.stdout.splitlines() if l.strip() and not l.startswith("2026-")]
-            if not lines:
-                return f"No files found matching '{filename_query}', sir."
-            top_matches = [Path(p).name for p in lines[:5]]
-            return f"Found matching files on your Mac: {', '.join(top_matches)}."
+            if IS_MACOS:
+                res = subprocess.run(["mdfind", "-name", clean_q], capture_output=True, text=True, timeout=5)
+                lines = [l.strip() for l in res.stdout.splitlines() if l.strip() and not l.startswith("2026-")]
+                if not lines:
+                    return f"No files found matching '{filename_query}', sir."
+                top_matches = [Path(p).name for p in lines[:5]]
+                return f"Found matching files: {', '.join(top_matches)}."
+            elif IS_WINDOWS:
+                ps_cmd = f"Get-ChildItem -Path $env:USERPROFILE -Filter '*{clean_q}*' -Recurse -Depth 3 -ErrorAction SilentlyContinue | Select-Object -First 5 -ExpandProperty Name"
+                res = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True, timeout=8)
+                lines = [l.strip() for l in res.stdout.splitlines() if l.strip()]
+                if not lines:
+                    return f"No files found matching '{filename_query}', sir."
+                return f"Found matching files on your Windows PC: {', '.join(lines[:5])}."
+            return f"Searched for '{filename_query}'."
         except Exception as e:
-            return f"Search error: {e}"
+            return f"Search notice: {e}"
 
     @staticmethod
     def open_system_setting(setting_name: str) -> str:
-        """Opens specific macOS System Settings pane."""
+        """Opens specific System Settings pane on macOS and Windows."""
         s = setting_name.lower().strip()
-        panes = {
-            "wifi": "x-apple.systempreferences:com.apple.wifi-settings.extension",
-            "wi-fi": "x-apple.systempreferences:com.apple.wifi-settings.extension",
-            "bluetooth": "x-apple.systempreferences:com.apple.BluetoothSettings",
-            "display": "x-apple.systempreferences:com.apple.Displays-Settings.extension",
-            "displays": "x-apple.systempreferences:com.apple.Displays-Settings.extension",
-            "brightness": "x-apple.systempreferences:com.apple.Displays-Settings.extension",
-            "sound": "x-apple.systempreferences:com.apple.Sound-Settings.extension",
-            "audio": "x-apple.systempreferences:com.apple.Sound-Settings.extension",
-            "battery": "x-apple.systempreferences:com.apple.Battery-Settings.extension",
-            "wallpaper": "x-apple.systempreferences:com.apple.Wallpaper-Settings.extension",
-            "privacy": "x-apple.systempreferences:com.apple.preference.security",
-            "security": "x-apple.systempreferences:com.apple.preference.security",
-            "lock": "x-apple.systempreferences:com.apple.Lock-Screen-Settings.extension"
-        }
-        url = panes.get(s)
-        if not url:
-            for k, u in panes.items():
-                if k in s:
-                    url = u
-                    break
-        if not url:
-            url = "x-apple.systempreferences:com.apple.systempreferences"
-            
-        subprocess.run(["open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return f"Opened macOS System Settings for '{setting_name}', sir."
+        if IS_WINDOWS:
+            win_settings = {
+                "wifi": "ms-settings:network-wifi",
+                "wi-fi": "ms-settings:network-wifi",
+                "bluetooth": "ms-settings:bluetooth",
+                "display": "ms-settings:display",
+                "displays": "ms-settings:display",
+                "brightness": "ms-settings:display",
+                "sound": "ms-settings:sound",
+                "audio": "ms-settings:sound",
+                "battery": "ms-settings:batterysaver",
+                "wallpaper": "ms-settings:personalization-background",
+                "privacy": "ms-settings:privacy",
+                "security": "ms-settings:windowsdefender",
+                "lock": "ms-settings:lockscreen"
+            }
+            target = win_settings.get(s, "ms-settings:")
+            open_url_or_file(target)
+            return f"Opened Windows Settings for '{setting_name}', sir."
+        else:
+            panes = {
+                "wifi": "x-apple.systempreferences:com.apple.wifi-settings.extension",
+                "wi-fi": "x-apple.systempreferences:com.apple.wifi-settings.extension",
+                "bluetooth": "x-apple.systempreferences:com.apple.BluetoothSettings",
+                "display": "x-apple.systempreferences:com.apple.Displays-Settings.extension",
+                "displays": "x-apple.systempreferences:com.apple.Displays-Settings.extension",
+                "brightness": "x-apple.systempreferences:com.apple.Displays-Settings.extension",
+                "sound": "x-apple.systempreferences:com.apple.Sound-Settings.extension",
+                "audio": "x-apple.systempreferences:com.apple.Sound-Settings.extension",
+                "battery": "x-apple.systempreferences:com.apple.Battery-Settings.extension",
+                "wallpaper": "x-apple.systempreferences:com.apple.Wallpaper-Settings.extension",
+                "privacy": "x-apple.systempreferences:com.apple.preference.security",
+                "security": "x-apple.systempreferences:com.apple.preference.security",
+                "lock": "x-apple.systempreferences:com.apple.Lock-Screen-Settings.extension"
+            }
+            url = panes.get(s, "x-apple.systempreferences:com.apple.systempreferences")
+            open_url_or_file(url)
+            return f"Opened macOS System Settings for '{setting_name}', sir."
+
+    @staticmethod
+    def sleep_system() -> str:
+        """Puts system to sleep across macOS and Windows."""
+        try:
+            if IS_MACOS:
+                subprocess.Popen(["pmset", "sleepnow"])
+            elif IS_WINDOWS:
+                subprocess.Popen(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"])
+            return "Putting system to sleep, sir."
+        except Exception as e:
+            return f"Failed to put system to sleep: {e}"
 
     @staticmethod
     def sleep_mac() -> str:
-        """Puts macOS to sleep."""
+        return SystemTools.sleep_system()
+
+    @staticmethod
+    def restart_system() -> str:
+        """Restarts system across macOS and Windows."""
         try:
-            subprocess.Popen(["pmset", "sleepnow"])
-            return "Putting Mac to sleep, sir."
+            if IS_MACOS:
+                subprocess.run(["osascript", "-e", 'tell application "System Events" to restart'])
+            elif IS_WINDOWS:
+                subprocess.run(["shutdown", "/r", "/t", "5"])
+            return "Initiating system restart, sir."
         except Exception as e:
-            return f"Failed to sleep Mac: {e}"
+            return f"Failed to restart system: {e}"
 
     @staticmethod
     def restart_mac() -> str:
-        """Restarts Mac."""
+        return SystemTools.restart_system()
+
+    @staticmethod
+    def shutdown_system() -> str:
+        """Shuts down system across macOS and Windows."""
         try:
-            subprocess.run(["osascript", "-e", 'tell application "System Events" to restart'])
-            return "Initiating system restart, sir."
+            if IS_MACOS:
+                subprocess.run(["osascript", "-e", 'tell application "System Events" to shut down'])
+            elif IS_WINDOWS:
+                subprocess.run(["shutdown", "/s", "/t", "5"])
+            return "Initiating system shutdown, sir."
         except Exception as e:
-            return f"Failed to restart Mac: {e}"
+            return f"Failed to shut down system: {e}"
 
     @staticmethod
     def shutdown_mac() -> str:
-        """Shuts down Mac."""
-        try:
-            subprocess.run(["osascript", "-e", 'tell application "System Events" to shut down'])
-            return "Initiating system shutdown, sir."
-        except Exception as e:
-            return f"Failed to shut down Mac: {e}"
+        return SystemTools.shutdown_system()
 
 tools = SystemTools()

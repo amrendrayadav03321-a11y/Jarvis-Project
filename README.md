@@ -1,15 +1,16 @@
-# ⚡ J.A.R.V.I.S. // Stark Industries Tactical OS (macOS Edition)
+# ⚡ J.A.R.V.I.S. // Stark Industries Tactical OS (Cross-Platform Edition)
 
 > 🚀 **Design and built by Satyaa Yadav**
 
-[![Author](https://img.shields.io/badge/Design%20%26%20Built%20By-Satyaa%20Yadav-ff0055?style=for-the-badge&logo=apple)](https://github.com/amrendrayadav03321-a11y/Jarvis-Project)
-[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue?logo=python&logoColor=white)](https://python.org)
+[![Author](https://img.shields.io/badge/Design%20%26%20Built%20By-Satyaa%20Yadav-ff0055?style=for-the-badge&logo=github)](https://github.com/amrendrayadav03321-a11y/Jarvis-Project)
+[![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows&logoColor=white)](https://microsoft.com)
 [![macOS](https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&logoColor=white)](https://apple.com)
+[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue?logo=python&logoColor=white)](https://python.org)
 [![Gemini](https://img.shields.io/badge/AI-Google%20Gemini%20Flash-4285F4?logo=google&logoColor=white)](https://aistudio.google.com)
 [![UI](https://img.shields.io/badge/HUD-Holographic%20Canvas%20GUI-00f0ff)](https://github.com/amrendrayadav03321-a11y/Jarvis-Project)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An ultra-advanced, intelligent desktop AI voice assistant built natively for **macOS (Apple Silicon & Intel)**. Powered by a **Dual-Engine Brain (Google Gemini Flash with Real-Time Function Calling + Offline Multi-Lingual NLP)** and presented with a futuristic **Iron Man Mark 85 Holographic Tactical HUD**.
+An ultra-advanced, intelligent desktop AI voice assistant built natively for **Windows 10/11 & macOS (Apple Silicon & Intel)**. Powered by a **Dual-Engine Brain (Google Gemini Flash with Real-Time Function Calling + Offline Multi-Lingual NLP)** and presented with a futuristic **Iron Man Mark 85 Holographic Tactical HUD**.
 
 ---
 
@@ -47,15 +48,16 @@ An ultra-advanced, intelligent desktop AI voice assistant built natively for **m
 - **Online (Gemini Flash AI)**: Fast multi-modal LLM with automated tool execution (opens applications, adjusts hardware volume, manages media, checks weather, captures screens).
 - **Offline (High-Speed NLP Intent Engine)**: Seamless offline operation for core macOS commands in **English, Hindi, and Hinglish**.
 
-### 💻 5. Complete macOS Automations & Tools
+### 💻 5. Complete Cross-Platform Automations & Tools (Windows 10/11 & macOS)
 - 🎵 **Direct YouTube Auto-Play**: Extracts video ID and opens the video for immediate autoplay.
-- 🚀 **App Launcher**: Open and close any macOS app (*Chrome, Brave, Safari, Spotify, VS Code, Notes, Calculator, etc.*).
-- 📸 **Silent Screen Capture**: Instant screenshot saved with timestamp to `screenshots/`.
-- 🔊 **System Audio Control**: Set volume %, increase/decrease, mute/unmute.
-- 🔋 **Battery & Diagnostics**: Instant battery state, CPU/RAM telemetry.
-- 🔒 **Security**: Fast Mac screen lock.
+- 🚀 **App Launcher**: Open and close any app (*Chrome, Brave, Edge, Spotify, VS Code, Notepad/Notes, Calculator, etc.*).
+- 📸 **Silent Screen Capture**: Cross-platform instant screenshot saved with timestamp to `screenshots/`.
+- 🔊 **System Audio Control**: Set volume %, increase/decrease, mute/unmute via native PowerShell on Windows and AppleScript on macOS.
+- 🔋 **Battery & Diagnostics**: Instant battery state (laptops) and AC power detection (desktop PCs), CPU/RAM telemetry.
+- 🔒 **Security**: Fast desktop screen lock (`LockWorkStation` on Windows / `displaysleepnow` on macOS).
 - ⛅ **Live Weather**: Real-time weather for any city worldwide.
 - 📝 **Smart Notes**: Dictate and review quick notes saved in `notes/`.
+- 📞 **Phone & WhatsApp Integration**: Open WhatsApp chats or trigger phone calls directly from contacts.
 
 ---
 
@@ -63,38 +65,51 @@ An ultra-advanced, intelligent desktop AI voice assistant built natively for **m
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/Jarvis.git
-cd Jarvis
+git clone https://github.com/amrendrayadav03321-a11y/Jarvis-Project.git
+cd Jarvis-Project
 ```
 
 ### 2. Configure Environment (`.env`)
 Copy the example environment template:
 ```bash
+# On macOS / Linux:
 cp .env.example .env
+
+# On Windows (Command Prompt / PowerShell):
+copy .env.example .env
 ```
 Open `.env` and add your **free Google Gemini API Key** (from [Google AI Studio](https://aistudio.google.com)):
 ```ini
 GEMINI_API_KEY="your_api_key_here"
 ```
 
-### 3. Run Jarvis
-Simply execute the launch script (it will automatically create the virtual environment and install dependencies on first run):
+### 3. Run Jarvis (1-Click Launch)
+
+#### On Windows (10 / 11):
+Simply double-click `run.bat` or run in Command Prompt / PowerShell:
+```cmd
+run.bat
+```
+
+#### On macOS & Linux:
+Make the script executable and run:
 ```bash
+chmod +x run.sh
 ./run.sh
 ```
-*Jarvis will initialize the Mark 85 OS and open the Holographic Tactical UI window automatically!*
+*Jarvis will automatically create the virtual environment, install all dependencies, initialize the Mark 85 OS, and open the Holographic Tactical UI window!*
 
 ---
 
 ## 🎯 Command Modes
 
-| Launch Command | Mode Description |
-|---|---|
-| `./run.sh` | **Holographic Graphical HUD UI** (Default desktop window mode) |
-| `./run.sh --ui` | Explicitly launch the Tactical GUI window |
-| `./run.sh --voice` | Terminal Voice Mode with Iron Man boot animation & live wave |
-| `./run.sh --text` | Terminal Keyboard Input Mode (ideal for silent environments) |
-| `./run.sh --test` | Runs full system diagnostic self-test (Sensors, AI, Battery, Audio) |
+| Windows Command | macOS / Linux Command | Mode Description |
+|---|---|---|
+| `run.bat` | `./run.sh` | **Holographic Graphical HUD UI** (Default desktop window mode) |
+| `run.bat --ui` | `./run.sh --ui` | Explicitly launch the Tactical GUI window |
+| `run.bat --voice` | `./run.sh --voice` | Terminal Voice Mode with Iron Man boot animation & live wave |
+| `run.bat --text` | `./run.sh --text` | Terminal Keyboard Input Mode (ideal for silent environments) |
+| `run.bat --test` | `./run.sh --test` | Runs full system diagnostic self-test (Sensors, AI, Battery, Audio) |
 
 ---
 
@@ -119,17 +134,19 @@ Simply execute the launch script (it will automatically create the virtual envir
 ```
 Jarvis/
 ├── jarvis.py              # Main application entry point & CLI controller
-├── run.sh                 # One-click launcher script
-├── requirements.txt       # Python package dependencies
+├── run.bat                # 1-Click launcher script for Windows (10/11)
+├── run.sh                 # 1-Click launcher script for macOS and Linux
+├── requirements.txt       # Python package dependencies (Pillow, edge-tts, rich, etc.)
 ├── .env.example           # Environment configuration template
 ├── .gitignore             # Git ignore file protecting API keys & personal data
 ├── LICENSE                # MIT Open Source License
 ├── core/
 │   ├── brain.py           # Gemini LLM + Offline Multi-Lingual NLP Engine
 │   ├── config.py          # Centralized environment loader
-│   ├── listener.py        # Clamped acoustic speech recognition engine
-│   ├── speaker.py         # Dual TTS engine (Neural Edge + macOS say)
-│   ├── tools.py           # macOS automations (App, YouTube, Audio, Screen)
+│   ├── contacts.py        # Contacts directory & WhatsApp/Call launcher
+│   ├── listener.py        # Cross-platform acoustic speech recognition engine
+│   ├── speaker.py         # Dual TTS engine (Neural Edge + Windows SAPI / macOS say)
+│   ├── tools.py           # Cross-platform automations (Windows & macOS native actions)
 │   └── wakeword.py        # Wake word detector & background audio filter
 ├── ui/
 │   ├── hud.py             # Rich terminal Arc Reactor animation & tables
@@ -146,8 +163,8 @@ Jarvis/
 
 ## 🛡️ Security & Privacy
 - **Zero API Key Leakage**: `.env` is ignored by `.gitignore` so your private API keys are never pushed to GitHub.
-- **Local macOS Controls**: All scripts use local AppleScripts and native macOS binaries (`screencapture`, `osascript`).
-- **Background Privacy**: Speech audio is strictly processed for the wake word; stray noise and conversations are discarded immediately.
+- **Native OS Automations**: Clean OS controls using native Windows PowerShell / WScript commands and native macOS AppleScript without third-party keyloggers.
+- **Background Privacy**: Speech audio is strictly processed for the wake word; stray noise and ambient chatter are filtered and discarded.
 
 ---
 
@@ -156,7 +173,7 @@ Jarvis/
 > 🚀 **Design and built by Satyaa Yadav**
 - **Creator**: **Satyaa Yadav**
 - **Repository**: [amrendrayadav03321-a11y/Jarvis-Project](https://github.com/amrendrayadav03321-a11y/Jarvis-Project)
-- **Architecture**: Native macOS Voice Assistant with Dual-Engine Intelligence & Stark HUD
+- **Architecture**: Cross-Platform AI Voice Assistant with Dual-Engine Intelligence & Stark HUD
 
 ---
 

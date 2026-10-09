@@ -78,8 +78,8 @@ class JarvisServer:
 
     async def handle_status(self, request):
         cpu = psutil.cpu_percent(interval=None)
-        mem = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
+        root_drive = (os.path.splitdrive(os.getcwd())[0] + os.sep) if sys.platform == "win32" else '/'
+        disk = psutil.disk_usage(root_drive)
         
         battery_pct = 100
         is_charging = False
