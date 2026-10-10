@@ -63,11 +63,29 @@ An ultra-advanced, intelligent desktop AI voice assistant built natively for **W
 
 ## 🚀 Quick Setup & Installation
 
-### 1. Clone the Repository
+### 1. Download the Project
+
+#### 🌟 Method A: Download ZIP (Recommended for Windows — No Git Required!)
+1. Click the green **Code** button at the top right of this page and click **[Download ZIP](https://github.com/amrendrayadav03321-a11y/Jarvis-Project/archive/refs/heads/main.zip)**.
+2. Extract the downloaded `Jarvis-Project-main.zip` on your computer.
+3. Open the extracted folder.
+
+#### ⚡ Method B: Windows PowerShell One-Liner (No Git Needed)
+Open PowerShell and run:
+```powershell
+Invoke-WebRequest -Uri "https://github.com/amrendrayadav03321-a11y/Jarvis-Project/archive/refs/heads/main.zip" -OutFile "Jarvis.zip"; Expand-Archive -Path "Jarvis.zip" -DestinationPath "."; cd "Jarvis-Project-main"
+```
+
+#### 🛠️ Method C: Git Clone
+If you have Git installed:
 ```bash
 git clone https://github.com/amrendrayadav03321-a11y/Jarvis-Project.git
 cd Jarvis-Project
 ```
+> **Note for Windows:** If you see `'git' is not recognized as a cmdlet`, it means Git is not installed on your system. Either use **Method A (Download ZIP)** above, or install Git quickly in PowerShell with:
+> ```powershell
+> winget install --id Git.Git -e --source winget
+> ```
 
 ### 2. Configure Environment (`.env`)
 Copy the example environment template:
