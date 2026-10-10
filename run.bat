@@ -51,7 +51,7 @@ if errorlevel 1 (
     %VENV_PYTHON% -m pip install -r requirements.txt
     if errorlevel 1 (
         echo [INFO] Installing core packages directly...
-        %VENV_PYTHON% -m pip install python-dotenv requests rich psutil edge-tts google-genai aiohttp tabulate Pillow SpeechRecognition
+        %VENV_PYTHON% -m pip install python-dotenv requests rich psutil edge-tts google-genai aiohttp tabulate Pillow SpeechRecognition sounddevice
     )
     %VENV_PYTHON% -c "import pyaudio" >nul 2>&1
     if errorlevel 1 (

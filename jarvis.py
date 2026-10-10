@@ -107,8 +107,8 @@ def main():
     hud.print_jarvis(greeting)
     speaker.speak(greeting)
 
-    from core.listener import PYAUDIO_AVAILABLE, SOUNDDEVICE_AVAILABLE
-    mic_ready = PYAUDIO_AVAILABLE or SOUNDDEVICE_AVAILABLE
+    from core.listener import MIC_DRIVER_AVAILABLE
+    mic_ready = MIC_DRIVER_AVAILABLE
     if not mic_ready and not args.text:
         console.print("[yellow]Notice: Hardware microphone driver not active. Running in keyboard text input mode.[/yellow]\n")
         mode = "text"

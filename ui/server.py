@@ -178,14 +178,15 @@ class JarvisServer:
     def start_voice_loop(self):
         """Background listener thread with Wake Word & Background Audio Filter."""
         def worker():
-            from core.listener import PYAUDIO_AVAILABLE, SOUNDDEVICE_AVAILABLE
-            if not PYAUDIO_AVAILABLE and not SOUNDDEVICE_AVAILABLE:
+            from core.listener import MIC_DRIVER_AVAILABLE
+            if not MIC_DRIVER_AVAILABLE:
                 print("[INFO] Microphone listener idle: No audio input drivers installed.")
                 while self.running:
                     time.sleep(2.0)
                 return
 
             listener.calibrate()
+            print("[INFO] Microphone listener ACTIVE & primed.")
             
             while self.running:
                 if self.voice_state in ["speaking", "processing", "manual_listening"]:
@@ -199,12 +200,14 @@ class JarvisServer:
                         time.sleep(0.1)
                         continue
 
+                    print(f"🎙️ [Acoustic Sensor] Heard: '{raw_audio}'")
                     has_wake, extracted_command = wake_detector.extract_command(raw_audio)
                     if not has_wake:
-                        # Silently ignore stray background songs or chatter
+                        print(f"🛡️ [Shield Filter] Ambient chatter blocked. (Say 'Hey Jarvis' to activate, or set WAKE_WORD_REQUIRED=false in .env)")
                         time.sleep(0.1)
                         continue
 
+                    print(f"⚡ [Wake Word Engaged] Processing command: '{extracted_command}'")
                     # Wake word was detected!
                     if extracted_command:
                         command = extracted_command
@@ -232,8 +235,10 @@ class JarvisServer:
                     speaker.speak(response)
                     self.voice_state = "standby"
                 else:
-                    raw_audio = listener.listen()
+                    self.voice_state = "listening"
+                    raw_audio = listener.listen(timeout=5.0, phrase_time_limit=8)
                     if raw_audio:
+                        print(f"🎙️ [Command Received]: '{raw_audio}'")
                         self.add_message("user", raw_audio)
                         self.voice_state = "processing"
                         response = brain.process(raw_audio)

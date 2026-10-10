@@ -36,7 +36,7 @@ if ($LASTEXITCODE -ne 0) {
     & $VenvPython -m pip install --upgrade pip
     & $VenvPython -m pip install -r requirements.txt
     if ($LASTEXITCODE -ne 0) {
-        & $VenvPython -m pip install python-dotenv requests rich psutil edge-tts google-genai aiohttp tabulate Pillow SpeechRecognition
+        & $VenvPython -m pip install python-dotenv requests rich psutil edge-tts google-genai aiohttp tabulate Pillow SpeechRecognition sounddevice
     }
 }
 
