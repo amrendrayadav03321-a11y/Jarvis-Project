@@ -63,6 +63,13 @@ An ultra-advanced, intelligent desktop AI voice assistant built natively for **W
 
 ## 🚀 Quick Setup & Installation
 
+> [!TIP]
+> **Recommended Python for Windows:** **Python 3.12** (Standard Stable Release).  
+> If your system has Python 3.14 (experimental pre-release), Windows audio drivers (`PyAudio`) will require C++ Build Tools. You can install Python 3.12 in 10 seconds via PowerShell:
+> ```powershell
+> winget install Python.Python.3.12
+> ```
+
 ### 1. Download the Project
 
 #### 🌟 Method A: Download ZIP (Recommended for Windows — No Git Required!)

@@ -107,7 +107,13 @@ def main():
     hud.print_jarvis(greeting)
     speaker.speak(greeting)
 
-    mode = "text" if args.text else "voice"
+    from core.listener import PYAUDIO_AVAILABLE
+    if not PYAUDIO_AVAILABLE and not args.text:
+        console.print("[yellow]Notice: Microphone drivers (PyAudio) not installed. Defaulting to keyboard text input mode.[/yellow]")
+        console.print("[dim]To enable voice microphone input on Windows, install Python 3.12: winget install Python.Python.3.12[/dim]\n")
+        mode = "text"
+    else:
+        mode = "text" if args.text else "voice"
 
     try:
         while True:

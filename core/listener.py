@@ -2,7 +2,13 @@ import os
 import subprocess
 import threading
 import speech_recognition as sr
-import pyaudio
+try:
+    import pyaudio
+    PYAUDIO_AVAILABLE = True
+except Exception:
+    pyaudio = None
+    PYAUDIO_AVAILABLE = False
+
 from core.config import Config
 
 class Listener:
@@ -42,6 +48,9 @@ class Listener:
 
     def _determine_device_index(self) -> int:
         """Finds the best hardware microphone device index across macOS and Windows."""
+        if not PYAUDIO_AVAILABLE:
+            return 0
+
         if Config.MIC_DEVICE_INDEX and str(Config.MIC_DEVICE_INDEX).strip().isdigit():
             return int(Config.MIC_DEVICE_INDEX)
 
@@ -90,6 +99,9 @@ class Listener:
 
     def calibrate(self):
         """Calibrates microphone with high-sensitivity floor and safety clamps."""
+        if not PYAUDIO_AVAILABLE:
+            self.calibrated = False
+            return
         try:
             with self.lock:
                 with sr.Microphone(device_index=self.device_index) as source:
@@ -103,6 +115,11 @@ class Listener:
 
     def listen(self, timeout=None, phrase_time_limit=None, status_callback=None) -> str:
         """Listens from the microphone with clean acoustics, call resilience, and zero speaker feedback."""
+        if not PYAUDIO_AVAILABLE:
+            if status_callback:
+                status_callback("Microphone unavailable (PyAudio required)")
+            return ""
+
         with self.lock:
             try:
                 with sr.Microphone(device_index=self.device_index) as source:
