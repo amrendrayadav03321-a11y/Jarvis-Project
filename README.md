@@ -111,10 +111,11 @@ GEMINI_API_KEY="your_api_key_here"
 ### 3. Run Jarvis (1-Click Launch)
 
 #### On Windows (10 / 11):
-Simply double-click `run.bat` or run in Command Prompt / PowerShell:
-```cmd
-run.bat
+Simply double-click `run.bat` in File Explorer, or run in PowerShell / Command Prompt:
+```powershell
+.\run.bat
 ```
+*(Or use `.\run.ps1` in PowerShell)*
 
 #### On macOS & Linux:
 Make the script executable and run:
