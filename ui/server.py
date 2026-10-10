@@ -178,9 +178,9 @@ class JarvisServer:
     def start_voice_loop(self):
         """Background listener thread with Wake Word & Background Audio Filter."""
         def worker():
-            from core.listener import PYAUDIO_AVAILABLE
-            if not PYAUDIO_AVAILABLE:
-                print("[INFO] Microphone listener idle: PyAudio not installed (Use Python 3.12 for pre-compiled audio drivers).")
+            from core.listener import PYAUDIO_AVAILABLE, SOUNDDEVICE_AVAILABLE
+            if not PYAUDIO_AVAILABLE and not SOUNDDEVICE_AVAILABLE:
+                print("[INFO] Microphone listener idle: No audio input drivers installed.")
                 while self.running:
                     time.sleep(2.0)
                 return

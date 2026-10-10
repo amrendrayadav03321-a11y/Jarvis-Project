@@ -9,6 +9,13 @@ except Exception:
     pyaudio = None
     PYAUDIO_AVAILABLE = False
 
+try:
+    import sounddevice as sd
+    SOUNDDEVICE_AVAILABLE = True
+except Exception:
+    sd = None
+    SOUNDDEVICE_AVAILABLE = False
+
 from core.config import Config
 
 class Listener:
@@ -100,7 +107,7 @@ class Listener:
     def calibrate(self):
         """Calibrates microphone with high-sensitivity floor and safety clamps."""
         if not PYAUDIO_AVAILABLE:
-            self.calibrated = False
+            self.calibrated = bool(SOUNDDEVICE_AVAILABLE)
             return
         try:
             with self.lock:
@@ -113,11 +120,38 @@ class Listener:
         except Exception:
             self.calibrated = False
 
+    def _listen_sounddevice(self, phrase_time_limit=None, status_callback=None) -> str:
+        """Records microphone input via sounddevice when PyAudio is not available."""
+        try:
+            sample_rate = 16000
+            duration = float(phrase_time_limit) if phrase_time_limit is not None else 4.0
+            if status_callback:
+                status_callback("Listening...")
+            recording = sd.rec(int(duration * sample_rate), samplerate=sample_rate, channels=1, dtype='int16')
+            sd.wait()
+            if status_callback:
+                status_callback("Processing speech...")
+            audio_bytes = recording.tobytes()
+            audio_data = sr.AudioData(audio_bytes, sample_rate, 2)
+            
+            for lang in [self.language, "hi-IN", "en-US"]:
+                try:
+                    text = self.recognizer.recognize_google(audio_data, language=lang)
+                    if text:
+                        return text.strip()
+                except Exception:
+                    continue
+            return ""
+        except Exception:
+            return ""
+
     def listen(self, timeout=None, phrase_time_limit=None, status_callback=None) -> str:
         """Listens from the microphone with clean acoustics, call resilience, and zero speaker feedback."""
         if not PYAUDIO_AVAILABLE:
+            if SOUNDDEVICE_AVAILABLE:
+                return self._listen_sounddevice(phrase_time_limit=phrase_time_limit, status_callback=status_callback)
             if status_callback:
-                status_callback("Microphone unavailable (PyAudio required)")
+                status_callback("Microphone unavailable")
             return ""
 
         with self.lock:

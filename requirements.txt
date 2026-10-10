@@ -1,6 +1,7 @@
 # Jarvis AI Voice Assistant Requirements
 SpeechRecognition>=3.10.0
 PyAudio>=0.2.14; python_version < '3.13'
+sounddevice>=0.4.6
 requests>=2.31.0
 rich>=13.7.0
 psutil>=5.9.8
